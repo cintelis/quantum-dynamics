@@ -82,6 +82,10 @@ h2::before { content: ""; width: 3px; height: 12px; background: var(--brand); fl
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .tile { background: var(--surface-1); padding: 18px; display: flex; flex-direction: column; transition: background .12s; }
 .tile:hover { background: #171d0f; }
+a.tile { color: inherit; text-decoration: none; }
+a.tile:hover h3 { color: var(--brand); }
+a.tile h3::after { content: " →"; color: var(--brand); opacity: 0; transition: opacity .12s; }
+a.tile:hover h3::after, a.tile:focus-visible h3::after { opacity: 1; }
 .tile h3 { margin: 12px 0 6px; font-size: 15px; font-weight: 700; }
 .tile p { margin: 0; color: var(--text-secondary); font-size: 13px; flex: 1; }
 .tile .ic { color: var(--brand); }
@@ -171,8 +175,8 @@ footer { border-top: 1px solid var(--line); background: #070707; }
       <p class="lead">Rank the recipes you can buy today, design spacer molecules that don't exist yet, and watch the
         quantum physics of a film play out live. Free for researchers; the code is open source.</p>
       <div class="ctas">
-        <a class="btn lg" href="#signup" id="hero-cta">Sign up for free access</a>
-        <a class="btn ghost lg" href="#tools">See what's inside</a>
+        <a class="btn lg" href="/dashboard" id="hero-try">Try the tools, no sign-up</a>
+        <a class="btn ghost lg" href="#signup" id="hero-cta">Sign up free</a>
       </div>
     </div>
   </div>
@@ -183,30 +187,30 @@ footer { border-top: 1px solid var(--line); background: #070707; }
   <section id="tools">
     <h2>What's inside</h2>
     <div class="tiles">
-      <div class="tile">
+      <a class="tile" href="/explorer">
         <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
         <h3>Materials explorer</h3>
         <p>Purchasable perovskite recipes, ranked against the published record of real devices.</p>
         <div class="fig">1,250 formulas · 78 cations</div>
-      </div>
-      <div class="tile">
+      </a>
+      <a class="tile" href="/molecules">
         <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 20.5 7.3v9.4L12 21.5 3.5 16.7V7.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></span>
         <h3>New molecules</h3>
         <p>Generated spacer cations for custom synthesis, scored for performance and ease of making.</p>
         <div class="fig">167 designs · checked against PubChem</div>
-      </div>
-      <div class="tile">
+      </a>
+      <a class="tile" href="/dashboard">
         <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M2 12h3l3-7 4 14 4-10 2 3h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         <h3>Live dynamics dashboard</h3>
         <p>Run energy funnelling in layered films, qubit and spin-chain models, and watch each time step stream in.</p>
         <div class="fig">Built on NVIDIA CUDA-Q</div>
-      </div>
-      <div class="tile">
+      </a>
+      <a class="tile" href="/chain">
         <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="3.5" cy="12" r="2" fill="currentColor"/><circle cx="9.2" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="14.8" cy="12" r="2" fill="currentColor"/><circle cx="20.5" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
         <h3>Spin chain at scale</h3>
         <p>A 100-spin quantum simulation and a preview of how today's quantum hardware noise would change it.</p>
         <div class="fig">Ready for GPU scale-up</div>
-      </div>
+      </a>
     </div>
   </section>
 
@@ -225,12 +229,12 @@ footer { border-top: 1px solid var(--line); background: #070707; }
     <div class="split">
       <div>
         <h3 class="su-h">Start simulating in under a minute.</h3>
-        <p>Tell us a little about yourself and you'll be straight in: no password, no waiting. Your browser stays
-          signed in on this device.</p>
+        <p>Anyone can look around. Tell us a little about yourself to run simulations, save results and see the
+          full molecule designs: free, no password, no waiting. Your browser stays signed in on this device.</p>
         <ul class="perks">
-          <li><b>All four tools</b><span>Materials explorer, new molecules, live dynamics and the spin chain.</span></li>
+          <li><b>Run your own simulations</b><span>Energy funnelling, qubits and spin chains on our servers. Nothing to install.</span></li>
           <li><b>Save and compare runs</b><span>Keep your simulations and see what other researchers have run.</span></li>
-          <li><b>Free for research</b><span>No card, no trial period. Runs on our servers, nothing to install.</span></li>
+          <li><b>Full molecule designs</b><span>Each new molecule's structure, and a synthesis request to send your supplier.</span></li>
           <li><b>Open source</b><span>Apache 2.0 licence. <span id="gh">Code release on GitHub is on its way.</span></span></li>
         </ul>
         <details class="privacy" id="privacy">
@@ -320,17 +324,18 @@ document.getElementById("foot-privacy").addEventListener("click", () => { docume
 
 const next = (() => {   // after sign-up, go back to the page that sent people here (same site only)
   const n = new URLSearchParams(location.search).get("next") || "/dashboard";
-  return /^\/[\w\-./]*$/.test(n) && n !== "/" ? n : "/dashboard";
+  return /^\/[\w\-./]*(#[\w\-=&.%+]*)?$/.test(n) && n !== "/" ? n : "/dashboard";
 })();
 
 function signedIn(name) {
   document.getElementById("form").hidden = true;
   document.getElementById("welcome").hidden = false;
   document.getElementById("welcome-h").textContent = name ? `Welcome, ${name}.` : "You're signed in.";
-  for (const id of ["top-cta", "hero-cta"]) {
+  for (const id of ["top-cta", "hero-try"]) {
     const a = document.getElementById(id);
     a.textContent = "Open the dashboard"; a.href = "/dashboard";
   }
+  document.getElementById("hero-cta").style.display = "none";
 }
 
 fetch("/api/session").then(r => r.json()).then(s => { if (s.signed_in) signedIn(s.name); }).catch(() => {});

@@ -91,6 +91,12 @@ td img { display: block; width: 320px; height: 190px; border-radius: 2px; }
 .detail dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; font-size: 13px; margin: 12px 0; }
 .detail dt { color: var(--text-muted); }
 .detail dd { margin: 0; }
+.lockimg { width: 96px; height: 56px; display: flex; align-items: center; justify-content: center; font-size: 11px;
+  color: var(--text-muted); border: 1px dashed #333; border-radius: 2px; background: #101010; }
+.detail .lockimg { width: 100%; height: 120px; font-size: 13px; margin: 8px 0 12px; }
+.lockbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-bottom: 12px;
+  background: #151b0c; border: 1px solid #3a4d17; border-radius: 2px; color: var(--text-secondary); font-size: 13px; }
+.lockbar .btn-primary { flex: none; margin-top: 0; }
 .detail .smiles { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
 .detail ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-secondary); font-size: 13px; }
 .btn-primary { display: inline-block; background: var(--brand); color: #000; text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 2px; margin-top: 8px; }
@@ -120,7 +126,7 @@ input[type=checkbox] { accent-color: var(--brand); width: 16px; height: 16px; }
   <div class="topline"></div>
   <div class="bar-top">
     <div class="mark" aria-hidden="true"></div>
-    <div class="brand">Quantum Dynamics Lab</div>
+    <div class="brand">Quantum Dynamics</div>
     <div class="tag">New spacer molecules · custom synthesis</div>
     <div class="spacer"></div>
     <a class="navlink" href="/explorer">Catalogue compositions</a>
@@ -178,12 +184,24 @@ const PARTS = [
 ];
 let DATA = null, selected = null;
 const picked = new Set();
-const img = m => el("img", { src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(m.svg), alt: m.label });
+const img = m => m.svg ? el("img", { src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(m.svg), alt: m.label })
+  : el("div", { class: "lockimg", title: "Sign up to see the structure" }, "🔒 structure");
+const key = m => m.smiles || m.id;                        // visitors get ids, not structures
+const isKnown = m => m.known ?? !!m.pubchem_cid;
+const toggle = m => QD.need("build a synthesis request", () => {
+  picked.has(key(m)) ? picked.delete(key(m)) : picked.add(key(m)); updatePicked(); render();
+});
 
 async function init() {
   DATA = await (await fetch("/api/molecules")).json();
   await vibLoad();
   if (DATA.error) { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, DATA.error)); return; }
+  if (DATA.locked) {
+    const b = el("div", { class: "lockbar" });
+    const a = el("a", { href: QD.signupUrl(), class: "btn-primary" }, "Sign up free");
+    b.append(el("span", {}, "You're seeing the scores. Sign up free to see each molecule's structure, the salt to order and its PubChem record, and to download a synthesis request."), a);
+    $("tbl").parentElement.before(b);
+  }
   const M = DATA.molecules;
   const tiles = [
     ["New molecules", M.length, "not sold in the catalogue"],
@@ -200,15 +218,15 @@ async function init() {
     "Funnel predictions use an illustrative mapping from spacer length and flexibility.";
   for (const id of ["role", "family", "known", "sa"]) $(id).onchange = render;
   $("q").oninput = render;
-  $("csvBtn").onclick = downloadCsv;
+  $("csvBtn").onclick = () => QD.need("download a synthesis request", downloadCsv);
   render();
 }
 
 function render() {
   const f = { role: $("role").value, family: $("family").value, known: $("known").value, sa: +$("sa").value || 10, q: $("q").value.trim().toLowerCase() };
   const rows = DATA.molecules.filter(m => (!f.role || m.role === f.role) && (!f.family || m.family === f.family) &&
-    (!f.known || (f.known === "known") === !!m.pubchem_cid) && m.sa_score <= f.sa &&
-    (!f.q || (m.label + " " + m.smiles + " " + m.family).toLowerCase().includes(f.q)));
+    (!f.known || (f.known === "known") === isKnown(m)) && m.sa_score <= f.sa &&
+    (!f.q || (m.label + " " + (m.smiles || "") + " " + m.family).toLowerCase().includes(f.q)));
   $("count").textContent = `${rows.length} match`;
   const t = $("tbl"); t.replaceChildren();
   const thead = el("thead"), hr = el("tr");
@@ -219,8 +237,8 @@ function render() {
     const tr = el("tr", { tabindex: "0" });
     if (selected === m) tr.className = "sel";
     const cb = el("input", { type: "checkbox", "aria-label": "Add to synthesis request" });
-    cb.checked = picked.has(m.smiles);
-    cb.onclick = e => { e.stopPropagation(); cb.checked ? picked.add(m.smiles) : picked.delete(m.smiles); updatePicked(); };
+    cb.checked = picked.has(key(m));
+    cb.onclick = e => { e.stopPropagation(); e.preventDefault(); toggle(m); };
     const tdc = el("td"); tdc.append(cb); tr.append(tdc);
     tr.append(el("td", { class: "num muted" }, String(i + 1)));
     const ti = el("td"); ti.append(img(m)); tr.append(ti);
@@ -228,7 +246,7 @@ function render() {
     const meta = el("div"); meta.append(el("span", { class: "chip" }, m.role === "DJ spacer" ? "DJ" : "RP"), document.createTextNode(" "), el("span", { class: "chip" }, m.family)); tn.append(meta); tr.append(tn);
     tr.append(el("td", { class: "num" }, m.desc.length_A.toFixed(1)));
     tr.append(el("td", { class: "num" }, m.sa_score.toFixed(1)));
-    tr.append(m.pubchem_cid ? el("td", { class: "muted" }, "known") : el("td", { class: "new" }, "not found"));
+    tr.append(isKnown(m) ? el("td", { class: "muted" }, "known") : el("td", { class: "new" }, "not found"));
     tr.append(el("td", { class: "num" }, Math.round(100 * m.funnel.efficiency) + "%"));
     const sc = el("td"), cell = el("div", { class: "scorecell" }), bar = el("div", { class: "scorebar" });
     for (const p of PARTS) { const i_ = el("i"); i_.style.width = (m.parts[p.key] / 100 * 140) + "px"; i_.style.background = p.color; bar.append(i_); }
@@ -272,10 +290,16 @@ function showDetail(m) {
   d.append(bd);
   const dl = el("dl");
   const add = (k, v, cls) => { dl.append(el("dt", {}, k)); const dd = el("dd", cls ? { class: cls } : {}, v); dl.append(dd); return dd; };
+  if (DATA.locked) {
+    const dd = add("Structure", "The exact molecule, the salt to order and its PubChem record are shown after a free sign-up. ");
+    dd.append(el("a", { href: QD.signupUrl() }, "Sign up to see it"));
+    add("PubChem", isKnown(m) ? "known compound: a route very likely exists" : "not found: may never have been made (route needs a chemist's check)");
+  } else {
   add("Free amine (SMILES)", m.smiles, "smiles");
   add("Salt to request", `${m.salt} · MW ≈ ${m.salt_mw} g/mol`);
   const pc = add("PubChem", m.pubchem_cid ? "" : "not found: may never have been made (route needs a chemist's check)");
   if (m.pubchem_cid) { const a = el("a", { href: `https://pubchem.ncbi.nlm.nih.gov/compound/${m.pubchem_cid}`, target: "_blank", rel: "noopener", class: "navlink" }, `CID ${m.pubchem_cid} ↗`); pc.append(a); }
+  }
   add("Synthesis difficulty", `${m.sa_score} of 10 (${m.sa_score <= 2.5 ? "easy" : m.sa_score <= 3.5 ? "moderate" : "harder"})`);
   add("Size and flexibility", `${m.desc.length_A} Å long · ${m.desc.heavy_atoms} heavy atoms · ${m.desc.rot_bonds} rotatable bonds · ${m.desc.aromatic_rings} aromatic rings · ${m.desc.fluorine} F`);
   add("Nearest proven spacer", `${m.analogue.name} (similarity ${m.analogue.similarity}; ${m.analogue.devices} published devices, best ${m.analogue.best_pce}%)`);
@@ -287,11 +311,11 @@ function showDetail(m) {
     const ul = el("ul"); for (const n of m.design_notes) ul.append(el("li", {}, n)); d.append(ul);
   }
   const row = el("div");
-  const cb = el("button", {}, picked.has(m.smiles) ? "Remove from request" : "Add to synthesis request");
-  cb.onclick = () => { picked.has(m.smiles) ? picked.delete(m.smiles) : picked.add(m.smiles); updatePicked(); render(); };
+  const cb = el("button", {}, picked.has(key(m)) ? "Remove from request" : "Add to synthesis request");
+  cb.onclick = () => toggle(m);
   row.append(cb, document.createTextNode(" "), el("a", { class: "btn-primary", href: funnelLink(m) }, "Simulate energy funnel →"));
   d.append(row);
-  const vs = vibSection(m.smiles, vibTip); if (vs) d.append(vs);
+  const vs = m.smiles ? vibSection(m.smiles, vibTip) : null; if (vs) d.append(vs);
 }
 function vibTip(ev, lines) {
   const t = $("tip");
@@ -309,7 +333,7 @@ function downloadCsv() {
   const q = s => `"${String(s ?? "").replace(/"/g, '""')}"`;
   const head = ["rank", "molecule", "salt_requested", "free_amine_smiles", "salt_mw_g_mol", "type", "family", "pubchem_cid", "synthesis_difficulty_1to10",
     "quantity", "purity", "composition_to_test", "why", "nearest_proven_spacer"];
-  const ms = DATA.molecules.filter(m => picked.has(m.smiles));
+  const ms = DATA.molecules.filter(m => picked.has(key(m)));
   const rows = ms.map(m => [DATA.molecules.indexOf(m) + 1, m.label, m.salt, m.smiles, m.salt_mw, m.role, m.family, m.pubchem_cid || "not found",
     m.sa_score, "5 g", ">=99.5%, water <0.5%, CoA", m.formula_n5.replace("(S)", `(${m.label})`), m.design_notes.join("; "),
     `${m.analogue.name} (sim ${m.analogue.similarity}, best ${m.analogue.best_pce}%)`]);

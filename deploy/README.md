@@ -13,7 +13,9 @@ user, and is capped at 4 CPUs and 6 GB (`QUANTUM_CPUS`, `QUANTUM_MEMORY` in `.en
 ## Who can use it
 
 - `/` is a public landing page with a sign-up form (name, email, organisation, role, interest).
-- Signing up sets a signed cookie (`QUANTUM_SESSION_KEY`) and opens every other page. There are no passwords and
+- Every page can be viewed without signing up. Running a simulation, deleting a run, downloads and the full
+  molecule designs (structures, salts, PubChem records) need a sign-up; visitors get the scores only.
+- Signing up sets a signed cookie (`QUANTUM_SESSION_KEY`). There are no passwords and
   emails are not verified, so a person is identified by that cookie, never by the email they typed.
 - Each sign-up is one line in `output/runs/.registrations.jsonl` (in the `runs` volume).
 - `/admin` lists the sign-ups and downloads them as CSV after you enter `QUANTUM_ADMIN_KEY`. An admin can delete

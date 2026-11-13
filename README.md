@@ -1,6 +1,6 @@
 # Qtum Dynamics: open tools for perovskite solar materials
 
-Live at **https://qtumdynamics.com** (free sign-up). This repository is the whole site:
+Live at **https://qtumdynamics.com**: open to browse, free sign-up to run simulations. This repository is the whole site:
 
 - **Materials explorer** (`/explorer`): purchasable perovskite recipes ranked against the published record of
   real devices (`materials/build_explorer.py`).

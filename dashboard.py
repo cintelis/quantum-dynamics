@@ -11,7 +11,8 @@ Endpoints
   GET /api/runs/<id>    one saved run, full data
   DELETE /api/runs/<id> move a run to the trash (its owner or an admin)
 
-Public site (QUANTUM_SESSION_KEY set): / is the landing page with sign-up, /dashboard the dashboard;
+Public site (QUANTUM_SESSION_KEY set): / is the landing page with sign-up, /dashboard the dashboard. Every page
+can be viewed; running, deleting and the full molecule designs need a sign-up.
 POST /api/register, /api/logout, /api/admin/login; GET /api/session, /api/admin/registrations[?format=csv].
 """
 import base64
@@ -49,8 +50,8 @@ TRUST_ACCESS = os.environ.get("QUANTUM_ACCESS") == "1"
 ADMINS = {e.strip().lower() for e in os.environ.get("QUANTUM_ADMINS", "").split(",") if e.strip()}
 TRASH_DIR = os.path.join(RUNS_DIR, ".trash")     # deleted runs are moved here, not erased
 
-# Public site with sign-up (QUANTUM_SESSION_KEY set): the landing page is open; everything else needs the signed
-# cookie that registering gives. Emails are not verified, so a person's identity is that cookie's random id, never
+# Public site with sign-up (QUANTUM_SESSION_KEY set): every page is open to look at; running a simulation,
+# deleting a run and the full molecule designs need the signed cookie that registering gives. Emails are not verified, so a person's identity is that cookie's random id, never
 # the email they typed. QUANTUM_ADMIN_KEY unlocks the admin view (all registrations, delete any run).
 SESSION_KEY = os.environ.get("QUANTUM_SESSION_KEY", "").encode()
 ADMIN_KEY = os.environ.get("QUANTUM_ADMIN_KEY", "")
@@ -59,8 +60,9 @@ REG_FILE = os.path.join(RUNS_DIR, ".registrations.jsonl")   # one JSON line per 
 CANONICAL_HOST = os.environ.get("QUANTUM_HOST", "")          # e.g. qtumdynamics.com
 REDIRECT_HOSTS = {h.strip().lower() for h in os.environ.get("QUANTUM_REDIRECT_HOSTS", "").split(",") if h.strip()}
 COOKIE = "qd_session"
-PUBLIC = {"/", "/index.html", "/admin", "/robots.txt", "/favicon.ico",
-          "/api/register", "/api/session", "/api/logout", "/api/admin/login"}
+# Everything can be looked at without signing up; these need a sign-up (they use the server or reveal designs).
+# Deleting a run (DELETE) always needs one too. /api/molecules and /api/vibrations are trimmed for visitors.
+MEMBERS_ONLY = {"/api/run"}
 EMAIL_RE = re.compile(r"[^@\s<>\"',;]{1,64}@[A-Za-z0-9.\-]{1,190}\.[A-Za-z]{2,24}")
 RATE = {}                       # ip -> recent attempt times (sign-ups and admin logins)
 RATE_LOCK = threading.Lock()
@@ -348,9 +350,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         return True
 
-    def gate(self, path):
+    def member(self):
+        """Signed up (or not a sign-up server, or a local call such as the healthcheck and seed_runs)."""
+        return not GATED or self.client_address[0] in ("127.0.0.1", "::1") or bool(self.session())
+
+    def gate(self, path, members=False):
         """True if this request may go on; otherwise it is answered here (to the sign-up form, or 401)."""
-        if not GATED or path in PUBLIC or self.client_address[0] in ("127.0.0.1", "::1") or self.session():
+        if not (members or path in MEMBERS_ONLY) or self.member():
             return True
         if path.startswith("/api/"):
             self.send_json({"error": "Sign up on the home page to use this.", "signup": "/#signup"}, 401)
@@ -422,7 +428,7 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/admin":
             self.send_file(os.path.join(HERE, "admin.html"), "text/html; charset=utf-8")
         elif u.path == "/robots.txt":
-            body = b"User-agent: *\nAllow: /$\nDisallow: /\n"
+            body = b"User-agent: *\nDisallow: /api/\nDisallow: /admin\nAllow: /\n"
             self.send_response(200)
             self.send_header("Content-Type", "text/plain")
             self.send_header("Content-Length", str(len(body)))
@@ -494,12 +500,20 @@ class Handler(BaseHTTPRequestHandler):
             p = os.path.join(HERE, "data", "vibrations.json")
             if not os.path.exists(p):
                 return self.send_json({"error": "data/vibrations.json missing: run vibrations.sh"}, 404)
-            self.send_file(p, "application/json")
+            if self.member():
+                return self.send_file(p, "application/json")
+            with open(p, encoding="utf-8") as f:
+                d = json.load(f)
+            d["molecules"] = [m for m in d.get("molecules", []) if m.get("source") != "new"]   # keyed by structure
+            self.send_json(d)
         elif u.path == "/api/molecules":
             p = os.path.join(HERE, "data", "new_molecules.json")
             if not os.path.exists(p):
                 return self.send_json({"error": "data/new_molecules.json missing: run generate_molecules.sh"}, 404)
-            self.send_file(p, "application/json")
+            if self.member():
+                return self.send_file(p, "application/json")
+            with open(p, encoding="utf-8") as f:
+                self.send_json(locked_molecules(json.load(f)))
         elif u.path == "/api/explorer":
             p = os.path.join(HERE, "data", "explorer.json")
             if not os.path.exists(p):
@@ -566,7 +580,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         u = urlparse(self.path)
-        if self.host_redirect(308) or not self.gate(u.path):
+        if self.host_redirect(308) or not self.gate(u.path, members=True):
             return
         if not self.same_origin():
             return self.send_json({"error": "cross-site request refused"}, 403)
@@ -657,6 +671,22 @@ class Handler(BaseHTTPRequestHandler):
                 record.setdefault("elapsed", record["steps"][-1]["elapsed"])
                 with open(os.path.join(RUNS_DIR, record["id"] + ".json"), "w") as f:
                     json.dump(record, f)
+
+
+# What visitors see of the generated molecules: scores and summaries, not the structures (name, SMILES,
+# drawing, salt, PubChem record), so the designs are not handed out before anyone signs up.
+LOCKED_DROP = ("smiles", "svg", "salt", "pubchem_cid")
+
+
+def locked_molecules(d):
+    out = {k: v for k, v in d.items() if k != "molecules"} | {"locked": True, "molecules": []}
+    for i, m in enumerate(d.get("molecules", []), 1):
+        r = {k: v for k, v in m.items() if k not in LOCKED_DROP}
+        r["label"] = f"{m.get('family', 'new')} {m.get('role', 'spacer')} #{i}"
+        r["id"] = f"design-{i}"
+        r["known"] = bool(m.get("pubchem_cid"))
+        out["molecules"].append(r)
+    return out
 
 
 REG_FIELDS = ["time", "name", "email", "organisation", "role", "interest", "id"]

@@ -138,7 +138,7 @@ details summary a { color: var(--brand); text-transform: none; letter-spacing: 0
   <div class="topline"></div>
   <div class="bar-top">
     <div class="mark" aria-hidden="true"></div>
-    <div class="brand">Quantum Dynamics Lab</div>
+    <div class="brand">Quantum Dynamics</div>
     <div class="tag">CUDA-Q · Lindblad master equation · live</div>
     <div class="spacer"></div>
     <a class="navlink" href="/explorer">Materials explorer</a>
@@ -259,10 +259,10 @@ async function init() {
   $("model").onchange = () => { buildParams(); refreshPaper(); };
   $("preset").onchange = applyPreset;
   buildParams();
-  $("runBtn").onclick = start;
+  $("runBtn").onclick = () => QD.need("run a simulation", start);
   $("stopBtn").onclick = () => stop(false);
   $("baseline").onchange = loadBaseline;
-  $("csvLink").onclick = e => { e.preventDefault(); downloadCsv(); };
+  $("csvLink").onclick = e => { e.preventDefault(); QD.need("download the data", downloadCsv); };
   $("tableDetails").ontoggle = renderTable;
   await refreshHistory();
   refreshPaper();

@@ -1,3 +1,58 @@
+// Sign-up check shared by every tool page. Anyone can look around; running, saving, deleting and downloading
+// need a (free) sign-up. Pages call QD.need("run a simulation", fn): fn runs if signed up, otherwise a short
+// box explains and links to the sign-up form, which brings the visitor back here afterwards.
+window.QD = (() => {
+  const session = fetch("/api/session").then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(s => s || { signed_in: true, gated: false });          // no sign-up server (local run): everything open
+  const member = () => session.then(s => !s.gated || s.signed_in);
+  const signupUrl = () => "/?next=" + encodeURIComponent(location.pathname + location.hash) + "#signup";
+  let box;
+  const st = document.createElement("style");
+      st.textContent = `
+      .qd-veil { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
+      .qd-veil.open { display: flex; }
+      .qd-box { width: 420px; max-width: 100%; background: #141414; border: 1px solid #262626; border-top: 3px solid var(--brand, #76b900);
+        border-radius: 2px; padding: 22px 22px 18px; box-shadow: 0 18px 50px rgba(0,0,0,.7); color: var(--text-primary, #f2f2f2); }
+      .qd-box .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--brand, #76b900); margin-bottom: 8px; }
+      .qd-box h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
+      .qd-box p { margin: 0 0 18px; color: var(--text-secondary, #b3b3b3); font-size: 14px; line-height: 1.5; }
+      .qd-box .row { display: flex; gap: 8px; flex-wrap: wrap; }
+      .qd-box a.go { display: inline-flex; align-items: center; background: var(--brand, #76b900); color: #000; border: 1px solid var(--brand, #76b900);
+        border-radius: 2px; padding: 8px 16px; font-weight: 600; text-decoration: none; }
+      .qd-box a.go:hover { background: var(--brand-hover, #8ccf14); }
+      .qd-box button { font: inherit; font-weight: 600; color: var(--text-primary, #f2f2f2); background: transparent; border: 1px solid #3a3a3a;
+        border-radius: 2px; padding: 8px 16px; cursor: pointer; }
+      .qd-box button:hover { border-color: var(--brand, #76b900); }
+      .qd-signup { display: inline-flex; align-items: center; background: var(--brand, #76b900); color: #000 !important; border: 1px solid var(--brand, #76b900);
+        border-radius: 2px; padding: 6px 12px; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+      .qd-signup:hover { background: var(--brand-hover, #8ccf14); }`;
+  document.head.append(st);
+  function ask(what) {
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "qd-veil";
+      box.innerHTML = `<div class="qd-box" role="dialog" aria-modal="true" aria-labelledby="qd-h">
+        <div class="k">Free · 30 seconds</div><h3 id="qd-h"></h3>
+        <p>Looking around is open to everyone. To run simulations, save, download or upload, tell us your name and
+        email: no password, and you come straight back here.</p>
+        <div class="row"><a class="go" href="#">Sign up free</a><button type="button">Keep exploring</button></div></div>`;
+      box.addEventListener("click", e => { if (e.target === box || e.target.tagName === "BUTTON") close(); });
+      document.addEventListener("keydown", e => { if (e.key === "Escape" && box.classList.contains("open")) close(); });
+      document.body.append(box);
+    }
+    box.querySelector("h3").textContent = "Sign up to " + what + ".";
+    box.querySelector("a.go").href = signupUrl();
+    box.classList.add("open");
+    box.querySelector("a.go").focus();
+  }
+  function close() { box.classList.remove("open"); }
+  async function need(what, fn) {
+    if (await member()) return fn && fn();
+    ask(what);
+  }
+  return { session, member, need, ask, signupUrl };
+})();
+
 // Shared app-launcher ("grid") menu for every page: a nine-dot button in the top bar opens a panel of page tiles
 // and dashboard model shortcuts. Keyboard: G toggles, 1-4 jump to a page, arrows move, Esc closes.
 (() => {
@@ -65,6 +120,8 @@
   const onDash = curPage.href === "/dashboard";
   const curModel = () => (onDash && document.getElementById("model")) ? document.getElementById("model").value : null;
 
+  let isMember = true;
+  QD.member().then(m => { isMember = m; });
   const here = document.createElement("span");
   here.className = "qnav-here"; here.textContent = curPage.name;
   const btn = document.createElement("button");
@@ -72,6 +129,12 @@
   btn.setAttribute("aria-label", "Open page menu"); btn.setAttribute("aria-haspopup", "true");
   btn.setAttribute("aria-expanded", "false"); btn.setAttribute("aria-controls", "qnav-panel"); btn.title = "Pages (G)";
   bar.append(here, btn);
+  QD.member().then(m => {
+    if (m) return;
+    const su = document.createElement("a");
+    su.className = "qd-signup"; su.textContent = "Sign up free"; su.href = QD.signupUrl();
+    bar.insertBefore(su, here);
+  });
 
   const panel = document.createElement("div");
   panel.className = "qnav-panel"; panel.id = "qnav-panel"; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", "Pages");
@@ -86,8 +149,10 @@
       `</div><div class="qnav-sep"></div><div class="qnav-h">Simulation models</div><div class="qnav-models">` +
       MODELS.map(m => `<a class="qnav-chip${m.model === cm ? " cur" : ""}" href="/dashboard#model=${m.model}" data-model="${m.model}">${m.name}</a>`).join("") +
       `</div><div class="qnav-foot"><span><kbd>G</kbd> menu</span><span><kbd>1</kbd>–<kbd>4</kbd> pages</span><span><kbd>Esc</kbd> close</span>` +
-      `<a class="qnav-link" href="/">Home</a><a class="qnav-link" href="#" data-signout>Sign out</a></div>`;
-    panel.querySelector("[data-signout]").addEventListener("click", async ev => {
+      `<a class="qnav-link" href="/">Home</a>` + (isMember ? `<a class="qnav-link" href="#" data-signout>Sign out</a>` :
+        `<a class="qnav-link" href="${QD.signupUrl()}">Sign up</a>`) + `</div>`;
+    const so = panel.querySelector("[data-signout]");
+    if (so) so.addEventListener("click", async ev => {
       ev.preventDefault();
       await fetch("/api/logout", { method: "POST" }).catch(() => null);
       location.href = "/";
