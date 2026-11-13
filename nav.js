@@ -1,56 +1,113 @@
-// Sign-up check shared by every tool page. Anyone can look around; running, saving, deleting and downloading
-// need a (free) sign-up. Pages call QD.need("run a simulation", fn): fn runs if signed up, otherwise a short
-// box explains and links to the sign-up form, which brings the visitor back here afterwards.
+// Sign-up check shared by every tool page. Anyone can look around; running, saving, deleting, downloading and
+// adding need a (free) sign-up. Pages call QD.need("run a simulation", fn): fn runs straight away if signed up,
+// otherwise a small sign-up form pops up in place, and fn runs once it succeeds (or QD.onSignup, if a page sets it).
 window.QD = (() => {
-  const session = fetch("/api/session").then(r => r.ok ? r.json() : null).catch(() => null)
+  let state = fetch("/api/session").then(r => r.ok ? r.json() : null).catch(() => null)
     .then(s => s || { signed_in: true, gated: false });          // no sign-up server (local run): everything open
-  const member = () => session.then(s => !s.gated || s.signed_in);
-  const signupUrl = () => "/?next=" + encodeURIComponent(location.pathname + location.hash) + "#signup";
-  let box;
+  const member = () => state.then(s => !s.gated || s.signed_in);
   const st = document.createElement("style");
-      st.textContent = `
-      .qd-veil { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
-      .qd-veil.open { display: flex; }
-      .qd-box { width: 420px; max-width: 100%; background: #141414; border: 1px solid #262626; border-top: 3px solid var(--brand, #76b900);
-        border-radius: 2px; padding: 22px 22px 18px; box-shadow: 0 18px 50px rgba(0,0,0,.7); color: var(--text-primary, #f2f2f2); }
-      .qd-box .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--brand, #76b900); margin-bottom: 8px; }
-      .qd-box h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
-      .qd-box p { margin: 0 0 18px; color: var(--text-secondary, #b3b3b3); font-size: 14px; line-height: 1.5; }
-      .qd-box .row { display: flex; gap: 8px; flex-wrap: wrap; }
-      .qd-box a.go { display: inline-flex; align-items: center; background: var(--brand, #76b900); color: #000; border: 1px solid var(--brand, #76b900);
-        border-radius: 2px; padding: 8px 16px; font-weight: 600; text-decoration: none; }
-      .qd-box a.go:hover { background: var(--brand-hover, #8ccf14); }
-      .qd-box button { font: inherit; font-weight: 600; color: var(--text-primary, #f2f2f2); background: transparent; border: 1px solid #3a3a3a;
-        border-radius: 2px; padding: 8px 16px; cursor: pointer; }
-      .qd-box button:hover { border-color: var(--brand, #76b900); }
-      .qd-signup { display: inline-flex; align-items: center; background: var(--brand, #76b900); color: #000 !important; border: 1px solid var(--brand, #76b900);
-        border-radius: 2px; padding: 6px 12px; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-      .qd-signup:hover { background: var(--brand-hover, #8ccf14); }`;
+  st.textContent = `
+  .qd-veil { position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .qd-veil.open { display: flex; }
+  .qd-box { width: 440px; max-width: 100%; max-height: calc(100vh - 32px); overflow: auto; background: #141414; border: 1px solid #262626;
+    border-top: 3px solid var(--brand, #76b900); border-radius: 2px; padding: 20px 22px 18px; box-shadow: 0 18px 50px rgba(0,0,0,.7);
+    color: var(--text-primary, #f2f2f2); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .qd-box .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--brand, #76b900); margin-bottom: 6px; }
+  .qd-box h3 { margin: 0 0 6px; font-size: 19px; letter-spacing: -.01em; }
+  .qd-box p.lead { margin: 0 0 14px; color: var(--text-secondary, #b3b3b3); font-size: 13.5px; }
+  .qd-box form { display: grid; gap: 10px; }
+  .qd-box label { display: grid; gap: 4px; font-size: 12px; color: var(--text-muted, #8a8a8a); }
+  .qd-box label .opt { color: #6a6a6a; }
+  .qd-box input:not([type=checkbox]), .qd-box select { font: inherit; color: var(--text-primary, #f2f2f2); background: var(--surface-2, #1c1c1c);
+    border: 1px solid #333; border-radius: 2px; padding: 7px 9px; height: 36px; }
+  .qd-box input:focus-visible, .qd-box select:focus-visible, .qd-box button:focus-visible { outline: 2px solid var(--brand, #76b900); outline-offset: 2px; }
+  .qd-box .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 480px) { .qd-box .two { grid-template-columns: 1fr; } }
+  .qd-box .consent { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--text-secondary, #b3b3b3); }
+  .qd-box .consent input { margin-top: 3px; accent-color: var(--brand, #76b900); }
+  .qd-box .consent a { color: var(--brand, #76b900); }
+  .qd-box .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .qd-box .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .qd-box button { font: inherit; font-weight: 600; border-radius: 2px; padding: 8px 16px; cursor: pointer; }
+  .qd-box button.go { background: var(--brand, #76b900); color: #000; border: 1px solid var(--brand, #76b900); }
+  .qd-box button.go:hover { background: var(--brand-hover, #8ccf14); }
+  .qd-box button.go:disabled { opacity: .5; cursor: default; }
+  .qd-box button.later { background: transparent; color: var(--text-primary, #f2f2f2); border: 1px solid #3a3a3a; }
+  .qd-box button.later:hover { border-color: var(--brand, #76b900); }
+  .qd-box .msg:empty { display: none; }
+  .qd-box .msg { font-size: 13px; color: var(--text-secondary, #b3b3b3); }
+  .qd-box .msg.err { color: #ff9a9a; background: rgba(208,59,59,.12); border: 1px solid rgba(208,59,59,.4); padding: 7px 10px; border-radius: 2px; }`;
   document.head.append(st);
-  function ask(what) {
-    if (!box) {
-      box = document.createElement("div");
-      box.className = "qd-veil";
-      box.innerHTML = `<div class="qd-box" role="dialog" aria-modal="true" aria-labelledby="qd-h">
-        <div class="k">Free · 30 seconds</div><h3 id="qd-h"></h3>
-        <p>Looking around is open to everyone. To run simulations, save, download or upload, tell us your name and
-        email: no password, and you come straight back here.</p>
-        <div class="row"><a class="go" href="#">Sign up free</a><button type="button">Keep exploring</button></div></div>`;
-      box.addEventListener("click", e => { if (e.target === box || e.target.tagName === "BUTTON") close(); });
-      document.addEventListener("keydown", e => { if (e.key === "Escape" && box.classList.contains("open")) close(); });
-      document.body.append(box);
-    }
-    box.querySelector("h3").textContent = "Sign up to " + what + ".";
-    box.querySelector("a.go").href = signupUrl();
-    box.classList.add("open");
-    box.querySelector("a.go").focus();
+
+  let box, pending = null;
+  function build() {
+    box = document.createElement("div");
+    box.className = "qd-veil";
+    box.innerHTML = `<div class="qd-box" role="dialog" aria-modal="true" aria-labelledby="qd-h">
+      <div class="k">Free · no password</div><h3 id="qd-h"></h3>
+      <p class="lead">Looking around is open to everyone. Tell us who you are once and you can run, save, add and
+        download from now on. Your browser stays signed in on this device.</p>
+      <form novalidate>
+        <div class="two">
+          <label>Name <input name="name" autocomplete="name" maxlength="100" required></label>
+          <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+        </div>
+        <div class="two">
+          <label><span>Organisation <span class="opt">(optional)</span></span><input name="organisation" autocomplete="organization" maxlength="150"></label>
+          <label><span>Role <span class="opt">(optional)</span></span><select name="role"><option value="">Choose one</option>
+            <option>Academic researcher</option><option>Industry researcher</option><option>Student</option>
+            <option>Materials supplier</option><option>Investor</option><option>Other</option></select></label>
+        </div>
+        <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+        <label class="consent"><input type="checkbox" name="consent" value="1">
+          <span>I agree to the <a href="/#privacy" target="_blank" rel="noopener">privacy note</a>.</span></label>
+        <div class="msg" role="status" aria-live="polite"></div>
+        <div class="row"><button class="go" type="submit">Sign up and continue</button><button class="later" type="button">Not now</button></div>
+      </form></div>`;
+    const form = box.querySelector("form"), msg = box.querySelector(".msg"), go = box.querySelector("button.go");
+    box.addEventListener("pointerdown", e => { if (e.target === box) close(); });
+    box.querySelector("button.later").onclick = close;
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && box.classList.contains("open")) close(); });
+    const err = (t, f) => { msg.className = "msg err"; msg.textContent = t; if (f) f.focus(); };
+    form.addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      data.consent = form.consent.checked;
+      msg.className = "msg"; msg.textContent = "";
+      if (!data.name.trim()) return err("Please give your name.", form.name);
+      if (!form.email.checkValidity() || !data.email.trim()) return err("Please give a valid email address.", form.email);
+      if (!data.consent) return err("Please tick the box to agree to the privacy note.", form.consent);
+      go.disabled = true; msg.textContent = "Signing you up…";
+      try {
+        const r = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+        const out = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(out.error || "Something went wrong. Please try again.");
+        state = Promise.resolve({ signed_in: true, gated: true, name: out.name });
+        document.dispatchEvent(new CustomEvent("qd:signedin", { detail: out }));
+        const fn = pending; close();
+        if (QD.onSignup) QD.onSignup(); else if (fn) fn();
+      } catch (e) {
+        err(e.message);
+      } finally {
+        go.disabled = false;
+      }
+    });
+    document.body.append(box);
   }
-  function close() { box.classList.remove("open"); }
+  function ask(what, fn) {
+    if (!box) build();
+    pending = fn || null;
+    box.querySelector("h3").textContent = "Sign up to " + what + ".";
+    box.querySelector(".msg").textContent = "";
+    box.classList.add("open");
+    box.querySelector("input[name=name]").focus();
+  }
+  function close() { box.classList.remove("open"); pending = null; }
   async function need(what, fn) {
     if (await member()) return fn && fn();
-    ask(what);
+    ask(what, fn);
   }
-  return { session, member, need, ask, signupUrl };
+  return { member, need, ask, onSignup: null };
 })();
 
 // Shared app-launcher ("grid") menu for every page: a nine-dot button in the top bar opens a panel of page tiles
@@ -122,6 +179,7 @@ window.QD = (() => {
 
   let isMember = true;
   QD.member().then(m => { isMember = m; });
+  document.addEventListener("qd:signedin", () => { isMember = true; });
   const here = document.createElement("span");
   here.className = "qnav-here"; here.textContent = curPage.name;
   const btn = document.createElement("button");
@@ -129,12 +187,6 @@ window.QD = (() => {
   btn.setAttribute("aria-label", "Open page menu"); btn.setAttribute("aria-haspopup", "true");
   btn.setAttribute("aria-expanded", "false"); btn.setAttribute("aria-controls", "qnav-panel"); btn.title = "Pages (G)";
   bar.append(here, btn);
-  QD.member().then(m => {
-    if (m) return;
-    const su = document.createElement("a");
-    su.className = "qd-signup"; su.textContent = "Sign up free"; su.href = QD.signupUrl();
-    bar.insertBefore(su, here);
-  });
 
   const panel = document.createElement("div");
   panel.className = "qnav-panel"; panel.id = "qnav-panel"; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", "Pages");
@@ -149,8 +201,7 @@ window.QD = (() => {
       `</div><div class="qnav-sep"></div><div class="qnav-h">Simulation models</div><div class="qnav-models">` +
       MODELS.map(m => `<a class="qnav-chip${m.model === cm ? " cur" : ""}" href="/dashboard#model=${m.model}" data-model="${m.model}">${m.name}</a>`).join("") +
       `</div><div class="qnav-foot"><span><kbd>G</kbd> menu</span><span><kbd>1</kbd>–<kbd>4</kbd> pages</span><span><kbd>Esc</kbd> close</span>` +
-      `<a class="qnav-link" href="/">Home</a>` + (isMember ? `<a class="qnav-link" href="#" data-signout>Sign out</a>` :
-        `<a class="qnav-link" href="${QD.signupUrl()}">Sign up</a>`) + `</div>`;
+      `<a class="qnav-link" href="/">Home</a>` + (isMember ? `<a class="qnav-link" href="#" data-signout>Sign out</a>` : "") + `</div>`;
     const so = panel.querySelector("[data-signout]");
     if (so) so.addEventListener("click", async ev => {
       ev.preventDefault();

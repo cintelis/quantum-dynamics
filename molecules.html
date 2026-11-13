@@ -94,9 +94,10 @@ td img { display: block; width: 320px; height: 190px; border-radius: 2px; }
 .lockimg { width: 96px; height: 56px; display: flex; align-items: center; justify-content: center; font-size: 11px;
   color: var(--text-muted); border: 1px dashed #333; border-radius: 2px; background: #101010; }
 .detail .lockimg { width: 100%; height: 120px; font-size: 13px; margin: 8px 0 12px; }
-.lockbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; margin-bottom: 12px;
-  background: #151b0c; border: 1px solid #3a4d17; border-radius: 2px; color: var(--text-secondary); font-size: 13px; }
-.lockbar .btn-primary { flex: none; margin-top: 0; }
+.lockbar { padding: 8px 12px; margin-bottom: 10px; border-left: 2px solid var(--brand); background: #101010;
+  color: var(--text-muted); font-size: 12.5px; }
+button.lockimg { font: inherit; font-size: 11px; cursor: pointer; }
+button.lockimg:hover { border-color: var(--brand); color: var(--text-secondary); }
 .detail .smiles { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
 .detail ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-secondary); font-size: 13px; }
 .btn-primary { display: inline-block; background: var(--brand); color: #000; text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 2px; margin-top: 8px; }
@@ -185,7 +186,12 @@ const PARTS = [
 let DATA = null, selected = null;
 const picked = new Set();
 const img = m => m.svg ? el("img", { src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(m.svg), alt: m.label })
-  : el("div", { class: "lockimg", title: "Sign up to see the structure" }, "🔒 structure");
+  : lockImg();
+function lockImg() {
+  const b = el("button", { class: "lockimg", type: "button", title: "Show the structure" }, "🔒 structure");
+  b.onclick = e => { e.stopPropagation(); QD.need("see the molecule structures"); };
+  return b;
+}
 const key = m => m.smiles || m.id;                        // visitors get ids, not structures
 const isKnown = m => m.known ?? !!m.pubchem_cid;
 const toggle = m => QD.need("build a synthesis request", () => {
@@ -197,10 +203,9 @@ async function init() {
   await vibLoad();
   if (DATA.error) { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, DATA.error)); return; }
   if (DATA.locked) {
-    const b = el("div", { class: "lockbar" });
-    const a = el("a", { href: QD.signupUrl(), class: "btn-primary" }, "Sign up free");
-    b.append(el("span", {}, "You're seeing the scores. Sign up free to see each molecule's structure, the salt to order and its PubChem record, and to download a synthesis request."), a);
-    $("tbl").parentElement.before(b);
+    QD.onSignup = () => location.reload();          // signed up from the pop-up: reload with the full designs
+    $("tbl").parentElement.before(el("div", { class: "lockbar" },
+      "Structures, salts and PubChem records are shown once you add a molecule to a synthesis request."));
   }
   const M = DATA.molecules;
   const tiles = [
@@ -291,8 +296,10 @@ function showDetail(m) {
   const dl = el("dl");
   const add = (k, v, cls) => { dl.append(el("dt", {}, k)); const dd = el("dd", cls ? { class: cls } : {}, v); dl.append(dd); return dd; };
   if (DATA.locked) {
-    const dd = add("Structure", "The exact molecule, the salt to order and its PubChem record are shown after a free sign-up. ");
-    dd.append(el("a", { href: QD.signupUrl() }, "Sign up to see it"));
+    const dd = add("Structure", "The exact molecule, the salt to order and its PubChem record. ");
+    const sb = el("a", { href: "#" }, "Show them");
+    sb.onclick = e => { e.preventDefault(); QD.need("see the molecule structures"); };
+    dd.append(sb);
     add("PubChem", isKnown(m) ? "known compound: a route very likely exists" : "not found: may never have been made (route needs a chemist's check)");
   } else {
   add("Free amine (SMILES)", m.smiles, "smiles");

@@ -137,7 +137,7 @@ tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
   <main>
     <div class="eyebrow">Solar-cell materials</div>
     <h1>Perovskite composition <b>explorer</b></h1>
-    <p class="sub">Every formula below can be made from salts in your catalogue. Each is checked against ~42,000 published
+    <p class="sub">Every formula below can be made from salts sold in a supplier catalogue. Each is checked against ~42,000 published
       devices (Perovskite Database Project) and ranked on four things you can see in the score bar. This narrows the search;
       it does not predict a device's efficiency.</p>
 
@@ -246,7 +246,7 @@ async function init() {
   ];
   $("tiles").replaceChildren(...tiles.map(([k, v, h]) => { const t = el("div", { class: "tile" }); t.append(el("div", { class: "k" }, k), el("div", { class: "v" }, v.toLocaleString()), el("div", { class: "h" }, h)); return t; }));
   $("legend").replaceChildren(...PARTS.map(p => { const s = el("span"); const i = el("i"); i.style.background = p.color; s.append(i, document.createTextNode(`${p.label} (max ${p.max})`)); return s; }));
-  $("foot").textContent = `Sources: ${DATA.sources.database}; ${DATA.sources.structures}; catalogue ${DATA.sources.catalogue.url}. Built ${DATA.generated}. ` +
+  $("foot").textContent = `Sources: ${DATA.sources.database}; ${DATA.sources.structures}; a supplier catalogue (${DATA.sources.catalogue.products} products, public listing). Built ${DATA.generated}. ` +
     "Band gaps are typical values for each layer thickness and halide, not calculations. Database matching uses abbreviations, so a few reports may be missed.";
   for (const id of ["target", "kind", "role", "A", "X", "n", "untried"]) $(id).onchange = () => { shown = 60; render(); };
   $("q").oninput = () => { shown = 60; render(); };
@@ -353,7 +353,7 @@ function showDetail(c, s) {
   }
 
   if (cat && cat.products) {
-    d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Buy from your catalogue"));
+    d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Buy from the catalogue"));
     const ul = el("ul");
     for (const p of cat.products) {
       const li = el("li", {}, `${cat.name} ${p.anion} · SKU ${p.sku}` + (p.cas ? ` · CAS ${p.cas}` : "") + (p.price ? ` · from $${p.price}` : "") + (p.inStock ? " · in stock" : " · out of stock"));
