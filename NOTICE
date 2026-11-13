@@ -1,0 +1,9 @@
+Qtum Dynamics
+Copyright 2026 Cintelis
+
+This product includes software developed by Cintelis (https://qtumdynamics.com).
+
+Data sources, not included in this repository:
+- The Perovskite Database Project (Jacobsson et al., Nature Energy 2022), CC BY 4.0.
+- PubChem (National Library of Medicine) for structure lookups.
+NVIDIA CUDA-Q is used as a dependency and is not part of this repository. Qtum Dynamics is not affiliated with NVIDIA.

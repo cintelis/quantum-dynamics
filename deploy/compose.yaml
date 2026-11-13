@@ -1,0 +1,62 @@
+# The quantum dashboard, served publicly at https://qtumdynamics.com
+#
+#   docker compose up -d --build        (run from this folder on the VM; needs .env with CLOUDFLARE_TUNNEL_TOKEN)
+#
+# Nothing is published on the host: no port, so other services on the VM keep theirs. cloudflared dials out to
+# Cloudflare, which serves the name and passes each request down the tunnel to the dashboard on a private
+# network. The dashboard itself has no internet access; it handles sign-up and sign-in itself.
+
+name: quantum
+
+services:
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: quantum-dashboard:latest
+    restart: unless-stopped
+    networks: [inside]
+    volumes:
+      - runs:/app/output/runs                 # saved runs survive rebuilds
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # simulations are CPU-heavy: cap them so other services on the VM keep their share
+    cpus: ${QUANTUM_CPUS:-4}
+    mem_limit: ${QUANTUM_MEMORY:-6g}
+    environment:
+      OPENBLAS_NUM_THREADS: ${QUANTUM_CPUS:-4}
+      OMP_NUM_THREADS: ${QUANTUM_CPUS:-4}
+      QUANTUM_SHARED: "1"                     # shared server: deleting a run needs its owner or an admin
+      QUANTUM_ACCESS: "0"                     # Access removed 2026-11-13: ignore its email header (set "1" if restored)
+      # public landing page + sign-up: signs the sign-in cookie; without it every page is open (no sign-up)
+      QUANTUM_SESSION_KEY: ${QUANTUM_SESSION_KEY:?set QUANTUM_SESSION_KEY in .env (see .env.example)}
+      QUANTUM_ADMIN_KEY: ${QUANTUM_ADMIN_KEY:-}               # unlocks /admin (all sign-ups, delete any run)
+      QUANTUM_HOST: ${QUANTUM_HOST:-qtumdynamics.com}          # the site's address; the names below redirect to it
+      QUANTUM_REDIRECT_HOSTS: ${QUANTUM_REDIRECT_HOSTS:-www.qtumdynamics.com,quantum.cintelis.com.au}
+      QUANTUM_ADMINS: ${QUANTUM_ADMINS:-}     # these emails may delete any run, including the examples
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env (see README.md)}
+    networks: [inside, outside]
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    cpus: 0.5
+    mem_limit: 256m
+
+networks:
+  inside:
+    internal: true                            # dashboard <-> cloudflared only, no route out
+  outside: {}                                 # cloudflared's outbound connection to Cloudflare
+
+volumes:
+  runs: {}

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perovskite composition explorer</title>
+<style>
+.viz-root {
+  color-scheme: dark;
+  --page: #000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --brand: #76b900; --brand-hover: #8ccf14;
+  /* score parts: categorical order validated on #141414 (green, blue, orange, violet) */
+  --s1: #6aa800; --s2: #3987e5; --s3: #d95926; --s4: #9085e9;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh; }
+.topline { height: 3px; background: var(--brand); }
+.bar-top { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #000; position: sticky; top: 0; z-index: 10; }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.tag { color: var(--text-muted); font-size: 12px; border-left: 1px solid var(--line); padding-left: 14px; }
+.spacer { flex: 1; }
+.navlink { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border: 1px solid transparent; }
+.navlink:hover { color: var(--brand); border-color: var(--line); }
+main { padding: 24px 28px 56px; max-width: 1700px; margin: 0 auto; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 6px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0; font-weight: 700; }
+h1 b { color: var(--brand); }
+.sub { color: var(--text-secondary); margin: 6px 0 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 2px; padding: 16px 18px; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.sec::before { content: ""; width: 3px; height: 12px; background: var(--brand); flex: none; }
+.pill { font-size: 12px; color: var(--text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+details.primer { margin-bottom: 16px; }
+details.primer summary { cursor: pointer; font-weight: 700; color: var(--text-secondary); font-size: 13px; }
+.primer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; color: var(--text-secondary); font-size: 13px; }
+.primer-grid b { color: var(--text-primary); }
+.primer pre { color: var(--text-primary); background: #0a0a0a; padding: 10px; font-size: 12px; margin: 6px 0 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+.tile { background: var(--surface-1); padding: 14px 18px; }
+.tile .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.tile .v { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.tile .h { font-size: 12px; color: var(--text-muted); }
+button, select, input { font: inherit; color: inherit; }
+select, input[type=search] { background: var(--surface-2); border: 1px solid #333; border-radius: 2px; padding: 7px 9px; }
+input[type=search] { width: 220px; }
+select:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible, tr:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+button { border: 1px solid #3a3a3a; background: transparent; border-radius: 2px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
+button:hover { border-color: var(--brand); }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; color: var(--text-muted); }
+.check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); padding-bottom: 8px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; align-items: start; }
+.layout.solo { grid-template-columns: minmax(0, 1fr); }
+.layout.solo .detail { display: none; }
+/* Details open: the list card stretches to the details panel's height and its table scrolls inside it. */
+.layout:not(.solo) { align-items: stretch; }
+.layout:not(.solo) > .card:first-child { display: flex; flex-direction: column; }
+.layout:not(.solo) > .card:first-child .scroll { flex: 1 1 auto; height: 0; min-height: 420px; max-height: none; }
+.info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid #444; border-radius: 50%; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: help; text-transform: none; letter-spacing: 0; }
+.info:hover, .info:focus-visible { border-color: var(--brand); color: var(--brand); }
+.info .bubble { display: none; position: absolute; left: 26px; top: -6px; width: 300px; background: #0a0a0a; border: 1px solid #333; padding: 8px 10px; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--text-secondary); z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.info:hover .bubble, .info:focus .bubble { display: block; }
+.closeBtn { float: right; padding: 2px 9px; font-size: 16px; line-height: 1; }
+@media (max-width: 1250px) { .layout { grid-template-columns: 1fr; } }
+.legend { display: flex; gap: 18px; flex-wrap: nowrap; white-space: nowrap; margin-left: auto; font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 10px; border-radius: 2px; display: inline-block; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #222; vertical-align: middle; }
+th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; background: var(--surface-1); z-index: 1; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: #1a1a1a; }
+tbody tr.sel td { background: #1d2610; }
+tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+.formula { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; white-space: nowrap; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 6px; border: 1px solid #333; border-radius: 2px; color: var(--text-secondary); white-space: nowrap; }
+.new { color: var(--brand); font-weight: 700; }
+.muted { color: var(--text-muted); }
+.scorebar { display: flex; height: 10px; width: 150px; background: #222; border-radius: 2px; overflow: hidden; gap: 2px; }
+.scorebar i { display: block; height: 100%; }
+.scorecell { display: flex; align-items: center; gap: 8px; }
+.scorecell b { width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { max-height: 720px; overflow: auto; }
+.more { margin-top: 10px; }
+.detail h2 { font-size: 18px; margin: 0 0 4px; }
+.detail .formula { font-size: 16px; color: var(--brand); }
+.detail dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; font-size: 13px; margin: 12px 0; }
+.detail dt { color: var(--text-muted); }
+.detail dd { margin: 0; }
+.detail ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-secondary); font-size: 13px; }
+.detail .smiles { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--text-secondary); }
+.btn-primary { display: inline-block; background: var(--brand); color: #000; text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 2px; margin-top: 8px; }
+.btn-primary:hover { background: var(--brand-hover); }
+.breakdown { margin: 10px 0; }
+.breakdown .row { display: grid; grid-template-columns: 130px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; color: var(--text-secondary); }
+.breakdown .track { height: 8px; background: #222; border-radius: 2px; overflow: hidden; }
+.breakdown .track i { display: block; height: 100%; }
+.breakdown b { text-align: right; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; background: #0a0a0a; border: 1px solid #333; padding: 7px 10px; font-size: 12px; display: none; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.tip .r { display: flex; gap: 8px; align-items: center; }
+.tip .r b { font-variant-numeric: tabular-nums; }
+.tip .r i { width: 10px; height: 8px; display: inline-block; border-radius: 2px; }
+.foot { color: var(--text-muted); font-size: 12px; margin-top: 18px; }
+.err { color: #ff9a9a; }
+.vib { margin-top: 14px; }
+.vib .legend { flex-wrap: wrap; white-space: normal; margin: 0 0 4px; gap: 6px 14px; }
+.vib-steplg { color: var(--text-muted); }
+.vibsvg { width: 100%; height: auto; display: block; margin: 6px 0; }
+.vib-steptxt { fill: var(--text-secondary); font-size: 10px; }
+.vib-axis { fill: var(--text-muted); font-size: 10px; }
+.vib-lead { font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; line-height: 1.45; }
+.vib-list { font-size: 12px !important; }
+.vib-note { font-size: 11px; line-height: 1.45; margin-top: 8px; }
+.field .lab { display: flex; align-items: center; gap: 6px; }
+.check-l { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.controls .info { width: 15px; height: 15px; font-size: 10px; flex: none; }
+.controls .info .bubble { left: 0; top: 22px; width: 260px; z-index: 60; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <div class="topline"></div>
+  <div class="bar-top">
+    <div class="mark" aria-hidden="true"></div>
+    <div class="brand">Quantum Dynamics Lab</div>
+    <div class="tag">Materials explorer · purchasable perovskite compositions</div>
+    <div class="spacer"></div>
+    <a class="navlink" href="/molecules">New molecules (custom synthesis)</a>
+    <a class="navlink" href="/dashboard">Dynamics dashboard</a>
+  </div>
+  <main>
+    <div class="eyebrow">Solar-cell materials</div>
+    <h1>Perovskite composition <b>explorer</b></h1>
+    <p class="sub">Every formula below can be made from salts in your catalogue. Each is checked against ~42,000 published
+      devices (Perovskite Database Project) and ranked on four things you can see in the score bar. This narrows the search;
+      it does not predict a device's efficiency.</p>
+
+    <details class="card primer">
+      <summary>New to perovskites? How the pieces fit (30-second read)</summary>
+      <div class="primer-grid">
+        <div><b>ABX₃ is a crystal shape.</b> B = lead (Pb) at the centre of cages, X = halide (iodide I, bromide Br, chloride Cl)
+          making the cage walls, A = a small positive molecule sitting in the gaps. Example: MAPbI₃.</div>
+        <div><b>Cations (+) and anions (−)</b> attract, so mixing salts like methylammonium iodide (MA⁺ I⁻) with lead iodide in
+          solution and drying it grows the crystal. The halide mostly sets which colours of light are absorbed.</div>
+        <div><b>Big cations are spacers.</b> Too big for the gaps, they slice the crystal into sheets n layers thick, like a club
+          sandwich. Spacers repel water (more stable) but block charge (less efficient).
+          <pre>[spacer] [Pb–I sheet × n] [spacer] [Pb–I sheet × n] …</pre></div>
+        <div><b>Reading a formula:</b> (PEA)₂MA₂Pb₃I₁₀ = two PEA spacers, an n = 3 sheet (2 MA + 3 Pb + 10 I).
+          <b>RP</b> spacers have one charged end (pairs, with a gap); <b>DJ</b> spacers have two (one molecule bridges sheets, no gap).</div>
+      </div>
+    </details>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card controls">
+      <div class="field"><div class="lab"><label for="target">Target use</label><span class="info" tabindex="0" role="img" aria-label="Sets the band gap the ranking aims for. The band gap is the lowest light energy a material absorbs: lower catches more sunlight, higher gives more voltage.">?<span class="bubble">Sets the band gap the ranking aims for. The band gap is the lowest light energy a material absorbs: lower catches more sunlight, higher gives more voltage.</span></span></div>
+        <select id="target">
+          <option value="1.45">Single-junction cell · ~1.45 eV</option>
+          <option value="1.75">Tandem top cell on silicon · ~1.75 eV</option>
+          <option value="2.1">Wide-gap / semi-transparent · ~2.1 eV</option>
+          <option value="2.4">Blue-green emitter / LED · ~2.4 eV</option>
+        </select></div>
+      <div class="field"><div class="lab"><label for="kind">Structure</label><span class="info" tabindex="0" role="img" aria-label="Layered (quasi-2D): thin perovskite sheets separated by organic spacer molecules, usually more stable. 3D: the classic bulk crystal with no spacer.">?<span class="bubble">Layered (quasi-2D): thin perovskite sheets separated by organic spacer molecules, usually more stable. 3D: the classic bulk crystal with no spacer.</span></span></div>
+        <select id="kind"><option value="">All</option><option value="quasi-2D">Layered (quasi-2D)</option><option value="3D">3D</option></select></div>
+      <div class="field"><div class="lab"><label for="role">Spacer type</label><span class="info" tabindex="0" role="img" aria-label="RP (Ruddlesden–Popper): the spacer has one charged end, so two spacer layers sit between sheets. DJ (Dion–Jacobson): charged at both ends, so one spacer bridges the sheets and they sit closer.">?<span class="bubble">RP (Ruddlesden–Popper): the spacer has one charged end, so two spacer layers sit between sheets. DJ (Dion–Jacobson): charged at both ends, so one spacer bridges the sheets and they sit closer.</span></span></div>
+        <select id="role"><option value="">All</option><option value="RP spacer">RP (one end)</option><option value="DJ spacer">DJ (two ends)</option></select></div>
+      <div class="field"><div class="lab"><label for="A">Small cation</label><span class="info" tabindex="0" role="img" aria-label="The small ion inside the perovskite cage. MA = methylammonium. FA = formamidinium: more heat-stable, with a slightly lower band gap.">?<span class="bubble">The small ion inside the perovskite cage. MA = methylammonium. FA = formamidinium: more heat-stable, with a slightly lower band gap.</span></span></div>
+        <select id="A"><option value="">All</option><option>MA</option><option>FA</option></select></div>
+      <div class="field"><div class="lab"><label for="X">Halide</label><span class="info" tabindex="0" role="img" aria-label="I = iodide: lower band gap, absorbs more sunlight. Br = bromide: higher band gap, used for wide-gap and tandem top cells.">?<span class="bubble">I = iodide: lower band gap, absorbs more sunlight. Br = bromide: higher band gap, used for wide-gap and tandem top cells.</span></span></div>
+        <select id="X"><option value="">All</option><option>I</option><option>Br</option></select></div>
+      <div class="field"><div class="lab"><label for="n">Layer thickness n</label><span class="info" tabindex="0" role="img" aria-label="How many lead-halide layers make up each sheet between spacers. Small n: thinner sheets, higher band gap, more stable. Large n: closer to 3D.">?<span class="bubble">How many lead-halide layers make up each sheet between spacers. Small n: thinner sheets, higher band gap, more stable. Large n: closer to 3D.</span></span></div>
+        <select id="n"><option value="">All</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      <div class="check"><label class="check-l"><input type="checkbox" id="untried" checked> Only combinations never reported</label><span class="info" tabindex="0" role="img" aria-label="Hides recipes already reported in the Perovskite Database (42,443 published devices), leaving only new combinations.">?<span class="bubble">Hides recipes already reported in the Perovskite Database (42,443 published devices), leaving only new combinations.</span></span></div>
+      <div class="field"><label for="q">Search spacer or formula</label><input type="search" id="q" placeholder="e.g. thiophene, fluoro, PDA"></div>
+    </div>
+
+    <div class="layout solo" id="layout">
+      <div class="card">
+        <div class="sec">Ranked candidates <span class="pill" id="count"></span>
+          <span class="info" tabindex="0" role="img" aria-label="Help">?<span class="bubble">Select a row to see why it ranks where it does, what to buy, and to simulate its energy funnel. Hover a score bar for its parts.</span></span>
+          <div class="legend" id="legend"></div></div>
+        <div class="scroll"><table id="tbl"></table></div>
+        <button class="more" id="more">Show more</button>
+      </div>
+      <div class="card detail" id="detail"></div>
+    </div>
+    <p class="foot" id="foot"></p>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+
+<script src="/vibchart.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, text) => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+const PARTS = [
+  { key: "fit", label: "Band-gap fit", max: 30, color: "var(--s1)" },
+  { key: "evidence", label: "Evidence from similar devices", max: 30, color: "var(--s2)" },
+  { key: "design", label: "Design rules", max: 28, color: "var(--s3)" },
+  { key: "novelty", label: "Novelty", max: 12, color: "var(--s4)" },
+];
+let DATA = null, rows = [], shown = 60, selected = null;
+
+function score(c) {
+  const target = +$("target").value;
+  const fit = 30 * Math.exp(-(((c.eg_est - target) / 0.3) ** 2));
+  let evidence = 0, evNote;
+  const sd = c.spacer_db || {};
+  if (sd.devices > 0 && sd.best_pce) {
+    evidence = 30 * Math.min(sd.best_pce / 23, 1) * (sd.devices >= 3 ? 1 : 0.7);
+    evNote = `${c.spacer || c.A} itself: ${sd.devices} devices, best ${sd.best_pce}%`;
+  } else if (c.analogue && c.analogue.best_pce) {
+    evidence = 30 * 0.8 * c.analogue.similarity * Math.min(c.analogue.best_pce / 23, 1);
+    evNote = `never reported; nearest reported analogue ${c.analogue.name} (similarity ${c.analogue.similarity}, best ${c.analogue.best_pce}%)`;
+  } else evNote = "no reported device or close analogue";
+  const design = Math.min(28, (c.design && c.design.points) || 0);
+  const nd = c.combo.devices;
+  const novelty = nd === 0 ? 12 : nd <= 3 ? 6 : 0;
+  let total = fit + evidence + design + novelty, warn = null;
+  if (c.kind === "3D" && c.tolerance && (c.tolerance < 0.8 || c.tolerance > 1.0)) {
+    total *= 0.4;  // the 3D cage is unlikely to form at all; other parts are moot
+    warn = `Tolerance factor ${c.tolerance}: this cation is the wrong size for a 3D cage, so a non-perovskite phase is likely (score × 0.4)`;
+  }
+  return { fit, evidence, design, novelty, total, evNote, warn };
+}
+
+async function init() {
+  await vibLoad();
+  const r = await fetch("/api/explorer");
+  DATA = await r.json();
+  if (DATA.error) { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, DATA.error)); return; }
+  const cats = DATA.cations;
+  const tiles = [
+    ["Catalogue products", DATA.sources.catalogue.products, "listed products scanned"],
+    ["Distinct cations", cats.length, `${cats.filter(c => c.desc).length} with a structure from PubChem`],
+    ["In published devices", cats.filter(c => c.db.devices > 0).length, "cations matched in the Perovskite Database"],
+    ["Candidate formulas", DATA.candidates.length, "purchasable compositions"],
+    ["Never reported", DATA.candidates.filter(c => c.combo.devices === 0).length, "spacer + cation + halide combination"],
+  ];
+  $("tiles").replaceChildren(...tiles.map(([k, v, h]) => { const t = el("div", { class: "tile" }); t.append(el("div", { class: "k" }, k), el("div", { class: "v" }, v.toLocaleString()), el("div", { class: "h" }, h)); return t; }));
+  $("legend").replaceChildren(...PARTS.map(p => { const s = el("span"); const i = el("i"); i.style.background = p.color; s.append(i, document.createTextNode(`${p.label} (max ${p.max})`)); return s; }));
+  $("foot").textContent = `Sources: ${DATA.sources.database}; ${DATA.sources.structures}; catalogue ${DATA.sources.catalogue.url}. Built ${DATA.generated}. ` +
+    "Band gaps are typical values for each layer thickness and halide, not calculations. Database matching uses abbreviations, so a few reports may be missed.";
+  for (const id of ["target", "kind", "role", "A", "X", "n", "untried"]) $(id).onchange = () => { shown = 60; render(); };
+  $("q").oninput = () => { shown = 60; render(); };
+  $("more").onclick = () => { shown += 60; render(); };
+  // deep link: #sel=<formula> opens that candidate's details
+  const sel = new URLSearchParams(location.hash.slice(1)).get("sel");
+  if (sel) { const c = DATA.candidates.find(c => c.formula === sel); if (c) { selected = c; if (c.combo.devices) $("untried").checked = false; } }
+  render();
+}
+
+function render() {
+  const f = { kind: $("kind").value, role: $("role").value, A: $("A").value, X: $("X").value, n: $("n").value, q: $("q").value.trim().toLowerCase() };
+  rows = DATA.candidates.filter(c =>
+    (!f.kind || c.kind === f.kind) && (!f.role || c.role === f.role) && (!f.A || c.A === f.A || c.kind === "3D") &&
+    (!f.X || c.X === f.X) && (!f.n || String(c.n) === f.n) && (!$("untried").checked || c.combo.devices === 0) &&
+    (!f.q || (c.formula + " " + (c.spacer || "") + " " + c.A).toLowerCase().includes(f.q)))
+    .map(c => ({ c, s: score(c) })).sort((a, b) => b.s.total - a.s.total);
+  $("count").textContent = `${rows.length.toLocaleString()} match · showing top ${Math.min(shown, rows.length)}`;
+  const t = $("tbl"); t.replaceChildren();
+  const thead = el("thead"), hr = el("tr");
+  for (const [h, cls] of [["#", "num"], ["Formula", ""], ["Spacer / cation", ""], ["n", "num"], ["Gap ≈ eV", "num"], ["Reported", ""], ["Score", ""], ["", ""]]) hr.append(el("th", cls ? { class: cls } : {}, h));
+  thead.append(hr); t.append(thead);
+  const tb = el("tbody");
+  rows.slice(0, shown).forEach(({ c, s }, i) => {
+    const tr = el("tr", { tabindex: "0" });
+    if (selected === c) tr.className = "sel";
+    tr.append(el("td", { class: "num muted" }, String(i + 1)));
+    tr.append(el("td", { class: "formula" }, c.formula));
+    const sp = el("td"); sp.append(document.createTextNode((c.spacer || c.A) + " "), el("span", { class: "chip" }, c.kind === "3D" ? "3D" : c.role.replace(" spacer", "")));
+    tr.append(sp);
+    tr.append(el("td", { class: "num" }, c.n == null ? "—" : String(c.n)));
+    tr.append(el("td", { class: "num" }, c.eg_est.toFixed(2)));
+    tr.append(c.combo.devices === 0 ? el("td", { class: "new" }, "never") : el("td", {}, `${c.combo.devices} · best ${c.combo.best_pce ?? "—"}%`));
+    const sc = el("td"), cell = el("div", { class: "scorecell" }), bar = el("div", { class: "scorebar" });
+    const k = s.total / (s.fit + s.evidence + s.design + s.novelty || 1);  // shrink bar parts with any penalty
+    for (const p of PARTS) { const i_ = el("i"); i_.style.width = (k * s[p.key] / 100 * 150) + "px"; i_.style.background = p.color; bar.append(i_); }
+    bar.onpointermove = ev => showTip(ev, s); bar.onpointerleave = hideTip;
+    cell.append(el("b", {}, s.total.toFixed(0)), bar); sc.append(cell); tr.append(sc);
+    const act = el("td");
+    if (c.funnel) { const a = el("a", { href: funnelLink(c), class: "navlink", title: "Simulate the energy funnel for this spacer" }, "Simulate →"); a.onclick = e => e.stopPropagation(); act.append(a); }
+    tr.append(act);
+    tr.onclick = tr.onkeydown = ev => { if (ev.type === "keydown" && ev.key !== "Enter") return; selected = c; render(); showDetail(c, s); };
+    tb.append(tr);
+  });
+  t.append(tb);
+  $("more").style.display = rows.length > shown ? "" : "none";
+  if (selected) { const r = rows.find(r => r.c === selected); if (r) showDetail(r.c, r.s); }
+}
+
+function showTip(ev, s) {
+  const tip = $("tip"); tip.replaceChildren();
+  for (const p of PARTS) { const r = el("div", { class: "r" }); const i = el("i"); i.style.background = p.color; r.append(i, el("b", {}, s[p.key].toFixed(1)), document.createTextNode(` / ${p.max}  ${p.label}`)); tip.append(r); }
+  tip.style.display = "block"; tip.style.left = (ev.clientX + 14) + "px"; tip.style.top = (ev.clientY + 14) + "px";
+}
+function hideTip() { $("tip").style.display = "none"; }
+
+function funnelLink(c) {
+  const q = new URLSearchParams({ model: "funnel", J: c.funnel.J, gamma: c.funnel.gamma, n_max: Math.min(c.n, 5), halide: c.X,
+    spacer: `${c.spacer} (${c.formula})`, spacer_note: `Spacer length ${spacerOf(c).desc.length_A} Å, ${spacerOf(c).desc.rot_bonds} rotatable bonds, ${spacerOf(c).desc.aromatic_rings} aromatic rings → well spacing ${c.funnel.d} Å.` });
+  return "/dashboard#" + q.toString();
+}
+const spacerOf = c => DATA.cations.find(x => x.name === c.spacer) || { desc: {} };
+
+function showDetail(c, s) {
+  const d = $("detail"); d.replaceChildren();
+  $("layout").classList.remove("solo");
+  const x = el("button", { class: "closeBtn", "aria-label": "Close details", title: "Close" }, "×");
+  x.onclick = () => { selected = null; $("layout").classList.add("solo"); render(); };
+  d.append(x);
+  const cat = c.kind === "3D" ? DATA.cations.find(x => x.desc && x.db && x.name && x.name.toLowerCase() === nameOfA(c.A)) : spacerOf(c);
+  d.append(el("div", { class: "eyebrow" }, c.kind === "3D" ? "3D perovskite" : `Layered perovskite · ${c.role}`));
+  d.append(el("h2", { class: "formula" }, c.formula));
+  d.append(el("div", { class: "muted" }, c.kind === "3D"
+    ? `A-site cation mix in a 3D lead-${c.X === "I" ? "iodide" : "bromide"} frame`
+    : `${c.spacer} spacer, ${c.A} inside, ${c.n}-layer-thick lead-${c.X === "I" ? "iodide" : "bromide"} sheets`));
+
+  const bd = el("div", { class: "breakdown" });
+  bd.append(el("div", { class: "sec" }, `Score ${s.total.toFixed(0)} / 100`));
+  for (const p of PARTS) {
+    const r = el("div", { class: "row" }), tr = el("div", { class: "track" }), i = el("i");
+    i.style.width = (100 * s[p.key] / p.max) + "%"; i.style.background = p.color; tr.append(i);
+    r.append(el("span", {}, p.label), tr, el("b", {}, s[p.key].toFixed(1))); bd.append(r);
+  }
+  if (s.warn) bd.append(el("p", { class: "err" }, s.warn));
+  d.append(bd);
+
+  const dl = el("dl");
+  const add = (k, v) => { dl.append(el("dt", {}, k), el("dd", {}, v)); };
+  add("Band gap ≈", `${c.eg_est.toFixed(2)} eV (target ${$("target").value} eV)`);
+  if (c.tolerance) add("Tolerance factor", String(c.tolerance) + (c.tolerance >= 0.8 && c.tolerance <= 1 ? " (fits a 3D cage)" : " (outside 0.8–1.0)"));
+  add("This combination", c.combo.devices === 0 ? "never reported in the database" : `${c.combo.devices} devices, best ${c.combo.best_pce}% efficiency`);
+  add("Evidence", s.evNote);
+  if (cat && cat.desc) {
+    add("Spacer length", `${cat.desc.length_A} Å · ${cat.desc.heavy_atoms} heavy atoms`);
+    add("Flexibility", `${cat.desc.rot_bonds} rotatable bonds · ${cat.desc.aromatic_rings} aromatic rings · ${cat.desc.fluorine} F`);
+    add("Structure", cat.desc.cation_smiles);
+    dl.lastChild.className = "smiles";
+  }
+  d.append(dl);
+
+  if (c.design && c.design.notes.length) {
+    d.append(el("div", { class: "sec" }, "Design rules that apply"));
+    const ul = el("ul"); for (const n of c.design.notes) ul.append(el("li", {}, n)); d.append(ul);
+  }
+
+  if (cat && cat.products) {
+    d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Buy from your catalogue"));
+    const ul = el("ul");
+    for (const p of cat.products) {
+      const li = el("li", {}, `${cat.name} ${p.anion} · SKU ${p.sku}` + (p.cas ? ` · CAS ${p.cas}` : "") + (p.price ? ` · from $${p.price}` : "") + (p.inStock ? " · in stock" : " · out of stock"));
+      ul.append(li);
+    }
+    if (c.kind === "quasi-2D") ul.append(el("li", { class: "muted" }, `plus ${c.A === "MA" ? "methylammonium" : "formamidinium"} ${c.X === "I" ? "iodide" : "bromide"} and lead ${c.X === "I" ? "iodide" : "bromide"} (lead salts are not in the listed catalogue)`));
+    d.append(ul);
+  }
+  if (c.funnel) {
+    d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Energy funnel estimate"));
+    d.append(el("div", { class: "muted" }, `Well spacing ${c.funnel.d} Å → coupling J ≈ ${c.funnel.J} meV; flexibility → dephasing γ ≈ ${c.funnel.gamma} meV (illustrative mapping).`));
+    d.append(el("a", { class: "btn-primary", href: funnelLink(c) }, "Simulate this spacer's energy funnel →"));
+  }
+  const vs = cat && cat.smiles ? vibSection(cat.smiles, vibTip) : null; if (vs) d.append(vs);
+}
+function vibTip(ev, lines) {
+  const t = $("tip");
+  if (!ev) { t.style.display = "none"; return; }
+  t.replaceChildren(...lines.map(l => el("div", {}, l)));
+  t.style.display = "block"; t.style.left = (ev.clientX + 14) + "px"; t.style.top = (ev.clientY + 14) + "px";
+}
+const nameOfA = a => ({ MA: "methylammonium", FA: "formamidinium", EA: "ethylammonium", DMA: "dimethylammonium", GU: "guanidinium", Ace: "acetamidinium", IM: "imidazolium", TMA: "trimethylammonium" })[a];
+
+init().catch(e => { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, "Could not load explorer data: " + e.message)); });
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>

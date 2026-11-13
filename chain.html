@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spin chain at scale · 100 spins</title>
+<style>
+.viz-root {
+  color-scheme: dark;
+  --page: #000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626; --grid: #242424;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --brand: #76b900; --brand-hover: #8ccf14;
+  /* series: categorical order validated on #141414 (green, blue, orange, violet) */
+  --s1: #6aa800; --s2: #3987e5; --s3: #d95926; --s4: #9085e9;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh; }
+.topline { height: 3px; background: var(--brand); }
+.bar-top { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #000; position: sticky; top: 0; z-index: 10; }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.tag { color: var(--text-muted); font-size: 12px; border-left: 1px solid var(--line); padding-left: 14px; }
+.spacer { flex: 1; }
+.navlink { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border: 1px solid transparent; }
+.navlink:hover { color: var(--brand); border-color: var(--line); }
+main { padding: 24px 28px 56px; max-width: 1700px; margin: 0 auto; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 6px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0; font-weight: 700; }
+h1 b { color: var(--brand); }
+.sub { color: var(--text-secondary); margin: 6px 0 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 2px; padding: 16px 18px; margin-bottom: 16px; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+.sec::before { content: ""; width: 3px; height: 12px; background: var(--brand); flex: none; }
+.lead { color: var(--text-secondary); margin: 0 0 10px; max-width: 1100px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+.tile { background: var(--surface-1); padding: 14px 18px; }
+.tile .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.tile .v { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .h { font-size: 12px; color: var(--text-muted); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin: 6px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; }
+.legend i.sq { width: 9px; height: 9px; border-radius: 1px; }
+svg.chart { width: 100%; display: block; overflow: visible; touch-action: none; }
+svg.chart text { fill: var(--text-muted); font-size: 11px; }
+svg.chart text.dl { fill: var(--text-primary); font-size: 11px; }
+svg.chart text.note { fill: var(--text-muted); font-size: 10.5px; }
+.heatwrap { position: relative; }
+canvas#heat { width: 100%; height: 360px; display: block; image-rendering: pixelated; border-radius: 2px; }
+.ramp { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+.ramp i { width: 160px; height: 8px; border-radius: 2px; background: linear-gradient(90deg, #3987e5, #2a2a2a, #6aa800); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #222; }
+th { color: var(--text-muted); font-weight: 600; font-size: 12px; }  /* no uppercase: it turns µ into M and χ into X */
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; background: #0a0a0a; border: 1px solid #333; padding: 7px 10px; font-size: 12px; display: none; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.tip .t { color: var(--text-muted); margin-bottom: 3px; }
+.tip .r { display: flex; gap: 8px; align-items: center; }
+.tip .r i { width: 10px; height: 3px; display: inline-block; border-radius: 2px; }
+.muted { color: var(--text-muted); }
+.err { color: #ff9a9a; }
+.foot { color: var(--text-muted); font-size: 12px; margin-top: 8px; max-width: 1200px; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <div class="topline"></div>
+  <div class="bar-top">
+    <div class="mark" aria-hidden="true"></div>
+    <div class="brand">Quantum Dynamics Lab</div>
+    <div class="tag">Spin chain at scale · beyond exact simulation</div>
+    <div class="spacer"></div>
+    <a class="navlink" href="/dashboard">Dynamics dashboard</a>
+    <a class="navlink" href="/explorer">Materials explorer</a>
+    <a class="navlink" href="/molecules">New molecules</a>
+  </div>
+  <main>
+    <div class="eyebrow">Spin chain · quantum-computer scale</div>
+    <h1>The spin chain at <b>100 spins</b></h1>
+    <p class="sub">The dashboard's spin chain (J = 0.5 MHz, Δ = 1, no dephasing, alternating up/down start) at the size of an IBM chip.
+      Exact simulation stops near 30 spins; a tensor-network (matrix product state) simulator stores the state compressed and
+      reaches 100 spins on this laptop. Below it: the same circuit with IBM's recorded chip noise, as a preview of real hardware.</p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <div class="sec">Does chain length change the dynamics?</div>
+      <p class="lead" id="stagLead">Loading…</p>
+      <div class="legend" id="stagLegend"></div>
+      <svg class="chart" id="stag" height="320" role="img" aria-label="Staggered magnetisation over time for 6, 9, 24 and 100 spins"></svg>
+    </div>
+
+    <div class="card">
+      <div class="sec">Every spin of the 100-spin chain</div>
+      <p class="lead" id="heatLead">Each row is one spin, each column a moment in time. The start is a perfect stripe pattern; it dissolves from the
+        inside while the two chain ends keep their order longer.</p>
+      <div class="heatwrap"><canvas id="heat" width="21" height="100" tabindex="0" aria-label="Heatmap of each spin's Z value over time"></canvas></div>
+      <div class="ramp"><span>−1 down</span><i></i><span>+1 up</span><span class="muted" style="margin-left:12px">rows: spin 0 (bottom) to spin 99 (top) · hover for values</span></div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Can we trust the compression?</div>
+      <p class="lead" id="checkLead">Loading…</p>
+      <div class="grid2">
+        <div><div class="muted" style="font-size:12px;margin-bottom:4px">24 spins: compressed vs exact (same circuit)</div><table id="check24"></table></div>
+        <div><div class="muted" style="font-size:12px;margin-bottom:4px">100 spins: increasing compression limit χ</div><table id="runs100"></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">Preview: the same circuit on IBM hardware noise</div>
+      <p class="lead" id="ibmLead">Loading…</p>
+      <div class="legend" id="ibmLegend"></div>
+      <div class="grid2">
+        <svg class="chart" id="ibm6" height="260" role="img" aria-label="6 spins: exact, perfect circuit and IBM-noise circuit"></svg>
+        <svg class="chart" id="ibm9" height="260" role="img" aria-label="9 spins: exact, perfect circuit and IBM-noise circuit"></svg>
+      </div>
+    </div>
+
+    <p class="foot">Staggered magnetisation = average of (−1)<sup>i</sup>·Z<sub>i</sub>: +1 for the starting stripe pattern, 0 once it has washed out.
+      Regenerate with <code>bash chain100.sh</code> (100 spins) and <code>bash ibm_step1.sh</code> (IBM noise preview) in WSL.</p>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const S = (tag, a = {}, text) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; return e; };
+const H = (tag, a = {}, text) => { const e = document.createElement(tag); for (const k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; return e; };
+const css = v => getComputedStyle(document.querySelector(".viz-root")).getPropertyValue(v).trim();
+const C = () => [css("--s1"), css("--s2"), css("--s3"), css("--s4")];
+const f = (v, d = 3) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d);
+
+function tip(ev, title, rows) {
+  const t = $("tip");
+  if (!ev) { t.style.display = "none"; return; }
+  t.replaceChildren(H("div", { class: "t" }, title));
+  for (const [c, label, v] of rows) { const r = H("div", { class: "r" }); const i = H("i"); i.style.background = c; r.append(i, H("b", {}, v), document.createTextNode(" " + label)); t.append(r); }
+  t.style.display = "block";
+  const x = Math.min(ev.clientX + 14, innerWidth - t.offsetWidth - 8);
+  t.style.left = x + "px"; t.style.top = (ev.clientY + 14) + "px";
+}
+
+function legend(el, items) {
+  el.replaceChildren();
+  for (const it of items) { const s = H("span"); const i = H("i", it.kind ? { class: it.kind } : {}); i.style.background = it.color; s.append(i, document.createTextNode(it.name)); el.append(s); }
+}
+
+// One-axis line chart with optional markers/error bars, a shaded "less certain" band, direct labels and a hover crosshair.
+function lineChart(svg, cfg) {
+  svg.replaceChildren();
+  const W = svg.clientWidth || 800, Hh = +svg.getAttribute("height");
+  svg.setAttribute("viewBox", `0 0 ${W} ${Hh}`);
+  const M = { l: 44, r: cfg.labels ? 110 : 14, t: 10, b: 30 };
+  const x0 = cfg.x[0], x1 = cfg.x[cfg.x.length - 1];
+  const lo = cfg.ylim[0], hi = cfg.ylim[1];
+  const X = v => M.l + (v - x0) / (x1 - x0) * (W - M.l - M.r);
+  const Y = v => M.t + (1 - (v - lo) / (hi - lo)) * (Hh - M.t - M.b);
+  if (cfg.shadeFrom != null && cfg.shadeFrom < x1) {
+    svg.append(S("rect", { x: X(cfg.shadeFrom), y: M.t, width: X(x1) - X(cfg.shadeFrom), height: Hh - M.t - M.b, fill: "#ffffff", "fill-opacity": 0.045 }));
+    svg.append(S("text", { x: X(cfg.shadeFrom) + 6, y: M.t + 14, class: "note" }, "less certain (compression-limited)"));
+  }
+  for (let v = Math.ceil(lo * 5) / 5; v <= hi + 1e-9; v += 0.2) {
+    const y = Y(v);
+    svg.append(S("line", { x1: M.l, x2: W - M.r, y1: y, y2: y, stroke: Math.abs(v) < 1e-9 ? "#3a3a3a" : css("--grid"), "stroke-width": 1 }));
+    svg.append(S("text", { x: M.l - 8, y: y + 4, "text-anchor": "end" }, (Math.abs(v) < 1e-9 ? 0 : v).toFixed(1)));
+  }
+  for (let v = 0; v <= x1 + 1e-9; v += 0.2) svg.append(S("text", { x: X(v), y: Hh - 10, "text-anchor": "middle" }, v.toFixed(1)));
+  svg.append(S("text", { x: W - M.r, y: Hh - 10, "text-anchor": "start", dx: 6 }, "µs"));
+  const labels = [];
+  for (const s of cfg.series) {
+    const xs = s.x || cfg.x;
+    if (s.line !== false) {
+      let d = ""; s.y.forEach((v, i) => d += (i ? "L" : "M") + X(xs[i]).toFixed(1) + "," + Y(v).toFixed(1));
+      svg.append(S("path", { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    }
+    if (s.err) s.y.forEach((v, i) => svg.append(S("line", { x1: X(xs[i]), x2: X(xs[i]), y1: Y(v - s.err[i]), y2: Y(v + s.err[i]), stroke: s.color, "stroke-width": 1.5 })));
+    if (s.marker === "dot") s.y.forEach((v, i) => svg.append(S("circle", { cx: X(xs[i]), cy: Y(v), r: 4.5, fill: s.color, stroke: css("--surface-1"), "stroke-width": 2 })));
+    if (s.marker === "sq") s.y.forEach((v, i) => svg.append(S("rect", { x: X(xs[i]) - 4.5, y: Y(v) - 4.5, width: 9, height: 9, rx: 1, fill: s.color, stroke: css("--surface-1"), "stroke-width": 2 })));
+    if (cfg.labels) labels.push({ y: Y(s.y[s.y.length - 1]), t: s.name.split(" (")[0] });
+  }
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 14) labels[i].y = labels[i - 1].y + 14;
+  for (const l of labels) svg.append(S("text", { x: X(x1) + 8, y: l.y + 4, class: "dl" }, l.t));
+  // hover layer
+  const cross = S("line", { y1: M.t, y2: Hh - M.b, stroke: "#666", "stroke-width": 1, visibility: "hidden" });
+  svg.append(cross);
+  const hit = S("rect", { x: M.l, y: M.t, width: W - M.l - M.r, height: Hh - M.t - M.b, fill: "transparent" });
+  hit.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const tv = x0 + (px - M.l) / (W - M.l - M.r) * (x1 - x0);
+    const near = (xs) => xs.reduce((b, v, i) => Math.abs(v - tv) < Math.abs(xs[b] - tv) ? i : b, 0);
+    const i0 = near(cfg.x);
+    cross.setAttribute("x1", X(cfg.x[i0])); cross.setAttribute("x2", X(cfg.x[i0])); cross.setAttribute("visibility", "visible");
+    tip(ev, `t = ${cfg.x[i0].toFixed(3)} µs`, cfg.series.map(s => { const xs = s.x || cfg.x, j = near(xs); return [s.color, s.name, f(s.y[j]) + (s.err ? " ± " + s.err[j].toFixed(3) : "")]; }));
+  });
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); tip(null); });
+  svg.append(hit);
+}
+
+function divColor(v) {   // blue (-1) -> gray (0) -> green (+1)
+  const a = [0x39, 0x87, 0xe5], m = [0x2a, 0x2a, 0x2a], b = [0x6a, 0xa8, 0x00];
+  const t = Math.max(-1, Math.min(1, v)), [p, q, w] = t < 0 ? [m, a, -t] : [m, b, t];
+  return p.map((c, k) => Math.round(c + (q[k] - c) * w));
+}
+
+function heat(T, Z) {
+  const cv = $("heat"), nt = Z.length, ns = Z[0].length;
+  cv.width = nt; cv.height = ns;
+  const ctx = cv.getContext("2d"), img = ctx.createImageData(nt, ns);
+  for (let ti = 0; ti < nt; ti++) for (let s = 0; s < ns; s++) {
+    const [r, g, b] = divColor(Z[ti][s]), p = ((ns - 1 - s) * nt + ti) * 4;
+    img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  cv.onpointermove = ev => {
+    const r = cv.getBoundingClientRect();
+    const ti = Math.min(nt - 1, Math.floor((ev.clientX - r.left) / r.width * nt));
+    const s = ns - 1 - Math.min(ns - 1, Math.floor((ev.clientY - r.top) / r.height * ns));
+    tip(ev, `spin ${s} · t = ${T[ti].toFixed(3)} µs`, [[`rgb(${divColor(Z[ti][s])})`, "<Z>", f(Z[ti][s])]]);
+  };
+  cv.onpointerleave = () => tip(null);
+}
+
+let CH = null, S1 = null;
+function render() {
+  const col = C();
+  if (CH && !CH.error) {
+    const T = CH.model.times_us, c = CH.chain_100, best = c.runs["256"] || c.runs[Object.keys(c.runs).pop()];
+    const ser = [{ name: "100 spins (compressed, χ = 256)", y: best.stag, color: col[0] },
+                 { name: "24 spins (exact)", y: CH.stag_24_exact, color: col[1] }];
+    if (CH.small_exact) ser.push({ name: "9 spins (exact)", y: CH.small_exact["9"], color: col[2] }, { name: "6 spins (exact)", y: CH.small_exact["6"], color: col[3] });
+    legend($("stagLegend"), ser);
+    lineChart($("stag"), { x: T, series: ser, ylim: [-0.6, 1.05], labels: true, shadeFrom: c.trusted_until_us });
+    // Summary computed from the data: when each short chain breaks away from the 100-spin curve (> 0.05),
+    // how close 24 spins stays, and how flat the 100-spin curve is once it has settled (trusted window only).
+    const trusted = T.map(t => t <= c.trusted_until_us + 1e-9);
+    const breakAway = y => { const i = y.findIndex((v, k) => T[k] >= 0.2 && trusted[k] && Math.abs(v - best.stag[k]) > 0.1); return i >= 0 ? T[i] : null; };  // after the collapse
+    const maxDiff = y => Math.max(...y.map((v, k) => trusted[k] ? Math.abs(v - best.stag[k]) : 0));
+    const settle = T.findIndex((t, k) => trusted[k] && T.every((u, j) => j < k || !trusted[j] || Math.abs(best.stag[j]) <= 0.02));
+    const b6 = CH.small_exact ? breakAway(CH.small_exact["6"]) : null, b9 = CH.small_exact ? breakAway(CH.small_exact["9"]) : null;
+    $("stagLead").textContent = `All four chain lengths collapse at nearly the same speed: the stripe pattern is gone within about 0.15 µs, whatever the length. ` +
+      (b6 != null && b9 != null ? `Then the short chains break away from the 100-spin curve (6 spins at ${b6} µs, 9 spins at ${b9} µs): ` +
+        `disturbances bounce off their ends and come back as large swings. ` : "") +
+      `The 100-spin chain stays within ±0.02 of zero from ${T[settle]} µs on, as a long material would. ` +
+      `24 spins stays within ${maxDiff(CH.stag_24_exact).toFixed(2)} of it throughout the reliable window: for this quantity, 24 spins already behaves like a long chain.`;
+    const Zt = c.Z_chi256, ih = T.findIndex(t => Math.abs(t - 0.5) < 1e-6);
+    if (ih >= 0) {
+      const ends = [0, 1, Zt[ih].length - 2, Zt[ih].length - 1].map(s => Math.abs(Zt[ih][s]));
+      const mid = Zt[ih].slice(40, 60).map(Math.abs);
+      $("heatLead").textContent = `Each row is one spin, each column a moment in time. The perfect stripe pattern at the start dissolves within about 0.2 µs ` +
+        `all along the chain. The end spins hold on to a little more order: at 0.5 µs their |Z| is up to ${Math.max(...ends).toFixed(2)}, against ` +
+        `${(mid.reduce((a, v) => a + v, 0) / mid.length).toFixed(2)} on average in the middle. Columns after ${c.trusted_until_us} µs are less certain.`;
+    }
+    heat(T, c.Z_chi256);
+    const chk = CH.check_24.mps;
+    const t1 = H("table"), h1 = H("tr"); for (const [h, k] of [["χ", "num"], ["Max error, staggered", "num"], ["Max error, any spin", "num"], ["Time (s)", "num"]]) h1.append(H("th", { class: k }, h)); t1.append(h1);
+    for (const k of Object.keys(chk)) { const r = H("tr"); r.append(H("td", { class: "num" }, k), H("td", { class: "num" }, chk[k].max_error_stag.toExponential(1)), H("td", { class: "num" }, chk[k].max_error_any_site.toExponential(1)), H("td", { class: "num" }, String(chk[k].seconds))); t1.append(r); }
+    const r0 = H("tr"); r0.append(H("td", {}, "exact"), H("td", { class: "num" }, "0"), H("td", { class: "num" }, "0"), H("td", { class: "num" }, String(CH.check_24.statevector_seconds))); t1.append(r0);
+    $("check24").replaceChildren(...t1.childNodes);
+    const t2 = H("table"), h2 = H("tr"); for (const [h, k] of [["χ", "num"], ["Value at 1 µs", "num"], ["Time (s)", "num"]]) h2.append(H("th", { class: k }, h)); t2.append(h2);
+    for (const k of Object.keys(c.runs)) { const r = H("tr"); r.append(H("td", { class: "num" }, k), H("td", { class: "num" }, f(c.runs[k].stag[c.runs[k].stag.length - 1])), H("td", { class: "num" }, String(c.runs[k].seconds))); t2.append(r); }
+    $("runs100").replaceChildren(...t2.childNodes);
+    $("checkLead").textContent = `The compression keeps at most χ numbers per cut through the chain. At 24 spins, where an exact answer exists, χ = 128 is within ` +
+      `${chk["128"] ? chk["128"].max_error_stag.toFixed(3) : "?"} of it. At 100 spins, χ = 128 and 256 agree within 0.01 ` +
+      (c.trusted_until_us >= T[T.length - 1] ? "over the whole run." : `until ${c.trusted_until_us} µs, then differ by up to ${c.max_diff_128_vs_256.toFixed(2)} by 1 µs: ` +
+      `entanglement has grown past what χ = 256 can hold, so the shaded part of the charts is less certain. A GPU would allow a larger χ.`);
+    const tiles = [["Spins simulated", "100", "2¹⁰⁰ ≈ 1.3 × 10³⁰ quantum states"],
+                   ["Exact limit here", "~30 spins", "24 spins took " + CH.check_24.statevector_seconds + " s exactly"],
+                   ["Compressed run", Math.round(best.seconds / 60) + " min", "χ = 256 on this laptop's CPU"],
+                   ["Trusted until", c.trusted_until_us + " µs", "χ = 128 and 256 agree within 0.01"],
+                   ["Pattern washed out by", T[settle] + " µs", "100 spins: within ±0.02 of zero after that"]];
+    $("tiles").replaceChildren(...tiles.map(([k, v, h]) => { const d = H("div", { class: "tile" }); d.append(H("div", { class: "k" }, k), H("div", { class: "v" }, v), H("div", { class: "h" }, h)); return d; }));
+  } else {
+    $("stagLead").replaceChildren(H("span", { class: "err" }, CH && CH.error ? CH.error : "100-spin results not found yet: run chain100.sh in WSL."));
+    $("checkLead").textContent = ""; $("tiles").replaceChildren();
+  }
+  if (S1 && !S1.error) {
+    const T1 = Array.from({ length: 21 }, (_, i) => +(i * S1.model.t_max_us / 20).toFixed(4));
+    const items = [{ name: "exact (dashboard solver)", color: col[0] }, { name: `circuit, perfect qubits (${Math.round(S1.model.dt_us * 1000)} ns steps)`, color: col[1], kind: "dot" },
+                   { name: "circuit with ibm_fez noise, no error mitigation", color: col[2], kind: "sq" }];
+    legend($("ibmLegend"), items);
+    for (const N of ["6", "9"]) {
+      const z = S1.sizes[N], s = z.series["staggered magnetisation"];
+      const svg = $("ibm" + N);
+      lineChart(svg, { x: T1, ylim: [-0.6, 1.05], series: [
+        { name: items[0].name, y: s.exact, color: col[0] },
+        { name: items[1].name, y: s.circuit, color: col[1], line: false, marker: "dot" },
+        { name: items[2].name, y: s.ibm, err: s.ibm_std, color: col[2], line: false, marker: "sq" }] });
+      svg.prepend(S("text", { x: 44, y: 10, class: "dl" }, `${N} spins · ${z.gate_stats[z.gate_stats.length - 1].two_qubit} two-qubit gates at 1 µs`));
+    }
+    const z9 = S1.sizes["9"];
+    $("ibmLead").textContent = `Step 1 of the IBM plan, run for free on this laptop. The circuit on perfect qubits matches the exact answer within ` +
+      `${z9.max_error_circuit_vs_exact.toFixed(3)}. With the recorded noise of IBM's 156-qubit ibm_fez chip it tracks the exact curve for about 0.4 µs, ` +
+      `then flattens toward zero (off by up to ${z9.max_error_noise_only.toFixed(2)} at 9 spins). Real hardware runs would add error mitigation to pull it back.`;
+  } else {
+    $("ibmLead").replaceChildren(H("span", { class: "err" }, "IBM preview not found: run ibm_step1.sh in WSL."));
+  }
+}
+
+async function init() {
+  const get = u => fetch(u).then(r => r.json()).catch(e => ({ error: String(e) }));
+  [CH, S1] = await Promise.all([get("/api/chain100"), get("/api/ibm-step1")]);
+  render();
+  let t; addEventListener("resize", () => { clearTimeout(t); t = setTimeout(render, 150); });
+}
+init();
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>

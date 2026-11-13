@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantum Dynamics Lab · live</title>
+<style>
+/* NVIDIA-inspired dark theme. Brand green on chrome; a validated darker green for data lines. */
+.viz-root {
+  color-scheme: dark;
+  --page: #000000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --grid: #242424; --axis: #3a3a3a; --border: #262626;
+  --brand: #76b900; --brand-hover: #8ccf14;
+  --series-1: #6aa800;  /* this run: brand-family green that passes the dark lightness band */
+  --series-2: #3987e5;  /* baseline: blue, dashed */
+  --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh; }
+.topline { height: 3px; background: var(--brand); }
+.bar-top { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #000; position: sticky; top: 0; z-index: 10; }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.tag { color: var(--text-muted); font-size: 12px; border-left: 1px solid var(--line); padding-left: 14px; }
+.spacer { flex: 1; }
+.device { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);
+  border: 1px solid var(--line); padding: 6px 10px; border-radius: 2px; text-transform: uppercase; letter-spacing: .08em; }
+.device i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.device.on i { background: var(--brand); box-shadow: 0 0 8px var(--brand); }
+main { padding: 24px 28px 56px; max-width: 1600px; margin: 0 auto; }
+.hero { margin-bottom: 18px; }
+.hero h1 { font-size: 30px; line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+.hero h1 b { color: var(--brand); font-weight: 700; }
+.sub { color: var(--text-secondary); margin: 6px 0 0; max-width: 860px; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 6px; }
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 2px; padding: 16px 18px; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.sec::before { content: ""; width: 3px; height: 12px; background: var(--brand); flex: none; }
+.sec .pill { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); }
+button, select, input { font: inherit; color: inherit; }
+button { border: 1px solid #3a3a3a; background: transparent; border-radius: 2px; padding: 8px 16px; cursor: pointer; font-weight: 600; transition: border-color .12s, background .12s; }
+button:hover:not(:disabled) { border-color: var(--brand); }
+button.primary { background: var(--brand); color: #000; border-color: var(--brand); min-width: 96px; }
+button.primary:hover:not(:disabled) { background: var(--brand-hover); border-color: var(--brand-hover); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+select, input[type=number] { background: var(--surface-2); border: 1px solid #333; border-radius: 2px; padding: 7px 9px; }
+select:hover, input[type=number]:hover { border-color: #4a4a4a; }
+input[type=number] { width: 96px; font-variant-numeric: tabular-nums; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-end; margin-bottom: 16px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; color: var(--text-muted); }
+.field .lab { display: flex; align-items: center; gap: 6px; }
+.info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border: 1px solid #444; border-radius: 50%; font-size: 10px; font-weight: 700; color: var(--text-secondary); cursor: help; flex: none; }
+.info:hover, .info:focus-visible { border-color: var(--brand); color: var(--brand); outline: none; }
+.info .bubble { display: none; position: absolute; left: 0; top: 22px; width: 240px; background: #0a0a0a; border: 1px solid #333; padding: 8px 10px; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--text-secondary); z-index: 60; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.info:hover .bubble, .info:focus .bubble { display: block; }
+.divider { width: 1px; align-self: stretch; background: var(--line); }
+.actions { display: flex; gap: 8px; margin-left: auto; align-items: flex-end; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 18px; }
+.tile { background: var(--surface-1); padding: 14px 18px; }
+.tile .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.tile .v { font-size: 28px; font-weight: 700; margin-top: 4px; white-space: nowrap; letter-spacing: -.01em; }
+.tile .h { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.status { display: inline-flex; align-items: center; gap: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted); flex: none; }
+.status[data-s=running] .dot { background: var(--brand); box-shadow: 0 0 10px var(--brand); animation: pulse 1s infinite; }
+.status[data-s=done] .dot { background: var(--good); }
+.status[data-s=stopped] .dot { background: var(--warning); }
+.status[data-s=error] .dot { background: var(--critical); }
+@keyframes pulse { 50% { opacity: .35; } }
+.bar { height: 3px; background: #2a2a2a; margin-top: 10px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--brand); transition: width .15s; }
+.err { color: #ff9a9a; background: rgba(208,59,59,.12); border: 1px solid rgba(208,59,59,.4); padding: 8px 12px; margin: -4px 0 14px; display: none; border-radius: 2px; }
+
+.legend { display: flex; gap: 20px; align-items: center; color: var(--text-secondary); font-size: 12px; margin: 0 0 10px; min-height: 18px; }
+.legend span { display: inline-flex; gap: 7px; align-items: center; }
+.legend i { width: 18px; height: 2px; display: inline-block; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.chart { position: relative; }
+.chart h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; display: flex; justify-content: space-between; gap: 12px; }
+.chart .now { font-weight: 700; font-variant-numeric: tabular-nums; }
+.chart svg { display: block; width: 100%; height: 200px; overflow: visible; touch-action: none; }
+.chart text { font-size: 11px; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+.chart text.dl { fill: var(--text-secondary); }
+.tip { position: absolute; pointer-events: none; background: #0a0a0a; border: 1px solid #333; border-radius: 2px;
+  padding: 7px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.6); display: none; z-index: 5; white-space: nowrap; }
+.tip .t { color: var(--text-muted); margin-bottom: 4px; }
+.tip .row { display: flex; align-items: center; gap: 8px; }
+.tip .row b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.tip .row span { color: var(--text-secondary); }
+.tip .key { width: 12px; height: 2px; }
+.heat-card { margin-bottom: 18px; }
+.heat-body { display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
+.heat-wrap { position: relative; }
+.heat-wrap canvas { width: 100%; height: 230px; display: block; image-rendering: pixelated; background: #0a0a0a; }
+.heat-rows { height: 230px; display: flex; flex-direction: column; justify-content: space-between; font-size: 10px; color: var(--text-muted); text-align: right; padding: 2px 0; font-variant-numeric: tabular-nums; }
+.heat-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin: 4px 0 0 72px; font-variant-numeric: tabular-nums; }
+.ramp { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); margin: 10px 0 0 72px; }
+.ramp canvas { width: 160px; height: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #222; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--text-muted); font-weight: 600; position: sticky; top: 0; background: var(--surface-1); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+tr:hover td { background: #1a1a1a; }
+.scroll { max-height: 340px; overflow: auto; }
+details summary { cursor: pointer; color: var(--text-secondary); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+details summary a { color: var(--brand); text-transform: none; letter-spacing: 0; font-weight: 600; }
+.hist td button { padding: 3px 10px; font-size: 12px; }
+.hist th, .hist td { text-align: left; }
+.hist td.num, .hist th.num { text-align: right; }
+.hist td:last-child { text-align: right; white-space: nowrap; }
+.hist tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+.hist td.by { color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.hist button.del { color: var(--text-muted); }
+.hist button.del:hover { color: #e5484d; border-color: #e5484d; }
+.hist button.del.armed { color: #fff; background: #b4232a; border-color: #b4232a; }
+.pill { font-size: 12px; color: var(--text-muted); }
+.navlink { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border: 1px solid transparent; }
+.navlink:hover { color: var(--brand); border-color: var(--line); }
+.spacer-banner { display: none; margin: -6px 0 14px; padding: 8px 12px; border-left: 3px solid var(--brand); background: var(--surface-1); color: var(--text-secondary); font-size: 13px; }
+.tiles.derived { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.tiles.derived .v { font-size: 22px; }
+.tiles.derived .k { text-transform: none; letter-spacing: 0; font-size: 12px; }  /* uppercase would turn α into A */
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.chart .note { font-size: 12px; color: var(--text-muted); margin: -4px 0 8px; }
+.chart text.marker { fill: var(--brand); font-weight: 700; }
+.st-done { color: #57c957; } .st-error { color: #ff9a9a; } .st-stopped { color: var(--warning); } .st-running { color: var(--brand); }
+</style>
+</head>
+<body>
+<div class="viz-root" id="root">
+  <div class="topline"></div>
+  <div class="bar-top">
+    <div class="mark" aria-hidden="true"></div>
+    <div class="brand">Quantum Dynamics Lab</div>
+    <div class="tag">CUDA-Q · Lindblad master equation · live</div>
+    <div class="spacer"></div>
+    <a class="navlink" href="/explorer">Materials explorer</a>
+    <a class="navlink" href="/molecules">New molecules</a>
+    <a class="navlink" href="/chain">Spin chain at scale</a>
+    <div class="device" id="device"><i></i><span id="deviceTxt">Checking device…</span></div>
+  </div>
+  <main>
+    <div class="hero">
+      <div class="eyebrow" id="eyebrow">Model</div>
+      <h1 id="heroTitle">—</h1>
+      <p class="sub" id="blurb"></p>
+    </div>
+
+    <div class="card controls" id="controls">
+      <div class="field"><div class="lab"><label for="model">Model</label><span class="info" tabindex="0" role="img" aria-label="Which physical system to simulate.">?<span class="bubble">Which physical system to simulate.</span></span></div><select id="model"></select></div>
+      <div class="field"><div class="lab"><label for="backend">Backend</label><span class="info" tabindex="0" role="img" aria-label="Where the maths runs. CPU · SciPy runs on this computer. GPU · NVIDIA dynamics uses CUDA-Q's GPU solver and needs an NVIDIA GPU, for example on AWS.">?<span class="bubble">Where the maths runs. CPU · SciPy runs on this computer. GPU · NVIDIA dynamics uses CUDA-Q's GPU solver and needs an NVIDIA GPU, for example on AWS.</span></span></div><select id="backend"></select></div>
+      <div class="field"><div class="lab"><label for="preset">Load</label><span class="info" tabindex="0" role="img" aria-label="Ready-made settings. Picking one fills in the fields; editing any field switches back to Custom.">?<span class="bubble">Ready-made settings. Picking one fills in the fields; editing any field switches back to Custom.</span></span></div><select id="preset"></select></div>
+      <div class="field"><div class="lab"><label for="pace">Playback</label><span class="info" tabindex="0" role="img" aria-label="How fast results stream into the charts. Slow-motion pauses on each time point so you can watch it unfold; the result is the same.">?<span class="bubble">How fast results stream into the charts. Slow-motion pauses on each time point so you can watch it unfold; the result is the same.</span></span></div>
+        <select id="pace">
+          <option value="0">Full speed</option>
+          <option value="10">Slow-motion · 10 ms/pt</option>
+          <option value="40">Slow-motion · 40 ms/pt</option>
+          <option value="100">Slow-motion · 100 ms/pt</option>
+        </select></div>
+      <div class="divider"></div>
+      <div id="params" style="display:contents"></div>
+      <div class="divider"></div>
+      <div class="field"><div class="lab"><label for="baseline">Compare with</label><span class="info" tabindex="0" role="img" aria-label="Overlay an earlier saved run on the charts, to see what your changes did.">?<span class="bubble">Overlay an earlier saved run on the charts, to see what your changes did.</span></span></div><select id="baseline"><option value="">No baseline</option></select></div>
+      <div class="actions">
+        <button class="primary" id="runBtn">Run</button>
+        <button id="stopBtn" disabled>Stop</button>
+      </div>
+    </div>
+    <p class="err" id="err" role="alert"></p>
+    <p class="spacer-banner" id="spacerBanner"></p>
+
+    <div class="tiles">
+      <div class="tile"><div class="k">Status</div>
+        <div class="v"><span class="status" id="status" data-s="idle"><span class="dot"></span><span id="statusTxt">Idle</span></span></div>
+        <div class="h" id="runIdTxt">—</div></div>
+      <div class="tile"><div class="k">Progress</div><div class="v" id="progTxt">—</div>
+        <div class="bar"><i id="progBar"></i></div></div>
+      <div class="tile"><div class="k">Elapsed</div><div class="v" id="elapsedTxt">—</div><div class="h" id="etaTxt">&nbsp;</div></div>
+      <div class="tile"><div class="k">Throughput</div><div class="v" id="speedTxt">—</div><div class="h">time points / second</div></div>
+      <div class="tile"><div class="k">System size</div><div class="v" id="sizeTxt">—</div><div class="h" id="sizeHint">&nbsp;</div></div>
+      <div class="tile"><div class="k">Purity Tr(ρ²)</div><div class="v" id="purityTxt">—</div><div class="h">1 = pure quantum state · lower = mixed by noise</div></div>
+    </div>
+
+    <div id="derivedWrap" style="display:none">
+      <div class="sec">Derived from your design <span class="pill">updates as you change the inputs</span></div>
+      <div class="tiles derived" id="derived"></div>
+    </div>
+    <div id="staticWrap" style="display:none">
+      <div class="sec" id="staticHead">From the paper <span class="pill" id="staticSource">Koch et al., Phys. Rev. A 76, 042319 (2007) · recomputed exactly for your settings</span></div>
+      <div class="grid3" id="static"></div>
+    </div>
+
+    <div class="sec">Observables <span class="pill">hover any chart · the crosshair is shared across charts</span></div>
+    <div class="legend" id="legend"></div>
+    <div class="grid2" id="charts"></div>
+
+    <div class="card heat-card" id="heatCard">
+      <div class="sec" id="heatTitle">Profile over time</div>
+      <div class="heat-body">
+        <div class="heat-rows" id="heatRows"></div>
+        <div class="heat-wrap">
+          <canvas id="heat" width="600" height="220" tabindex="0" aria-label="Heatmap of profile over time"></canvas>
+          <div class="tip" id="heatTip"></div>
+        </div>
+      </div>
+      <div class="heat-axis"><span id="heatStart">0 µs</span><span>time →</span><span id="heatEnd">—</span></div>
+      <div class="ramp"><span id="rampLo"></span><canvas id="ramp" width="160" height="8" role="img" aria-label="colour scale"></canvas><span id="rampHi"></span></div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px">
+      <details id="tableDetails"><summary>Data table · <a href="#" id="csvLink">download CSV</a></summary>
+        <div class="scroll" style="margin-top:10px"><table id="dataTable"></table></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="sec">Run history <span class="pill">saved on this server · Delete moves a run to the server's trash</span></div>
+      <div class="scroll"><table class="hist" id="hist"></table></div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const css = name => getComputedStyle($("root")).getPropertyValue(name).trim();
+const fmt = (v, d = 3) => v == null || !isFinite(v) ? "—" : Math.abs(v) >= 1000 ? v.toFixed(0) : (+v).toFixed(d);
+const el = (tag, attrs = {}, text) => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+const svgEl = (tag, attrs = {}) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+let SCHEMA = null;
+const tu = () => (run && run.meta && run.meta.time_unit) || (SCHEMA && SCHEMA.models[$("model").value] && SCHEMA.models[$("model").value].time_unit) || "µs";
+let spacerCtx = null;  // {spacer, spacer_note} when opened from the materials explorer
+let run = null;        // {meta, steps, status}
+let baseline = null;   // saved run record
+let es = null;
+let hoverT = null;     // shared crosshair time
+let dirty = false;
+
+// ------------------------------------------------------------------ controls
+async function init() {
+  SCHEMA = await (await fetch("/api/schema")).json();
+  for (const [k, m] of Object.entries(SCHEMA.models)) $("model").append(el("option", { value: k }, m.title));
+  for (const b of SCHEMA.backends) {
+    const o = el("option", { value: b }, b === "gpu" ? "GPU · NVIDIA dynamics" : "CPU · SciPy");
+    if (b === "gpu" && !SCHEMA.gpu) { o.disabled = true; o.textContent += " (no GPU here)"; }
+    $("backend").append(o);
+  }
+  $("deviceTxt").textContent = SCHEMA.gpu ? "NVIDIA GPU online" : "CPU only · no NVIDIA GPU";
+  $("device").classList.toggle("on", !!SCHEMA.gpu);
+  if (SCHEMA.gpu) $("backend").value = "gpu";
+  $("model").onchange = () => { buildParams(); refreshPaper(); };
+  $("preset").onchange = applyPreset;
+  buildParams();
+  $("runBtn").onclick = start;
+  $("stopBtn").onclick = () => stop(false);
+  $("baseline").onchange = loadBaseline;
+  $("csvLink").onclick = e => { e.preventDefault(); downloadCsv(); };
+  $("tableDetails").ontoggle = renderTable;
+  await refreshHistory();
+  refreshPaper();
+  // deep links: #view=<run id>&compare=<run id>
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("model") && SCHEMA.models[h.get("model")] && !h.get("view")) {
+    if (h.get("spacer")) spacerCtx = { spacer: h.get("spacer"), spacer_note: h.get("spacer_note") || "" };
+    $("model").value = h.get("model"); buildParams();
+    for (const p of SCHEMA.models[h.get("model")].params) if (h.has(p.key)) $("p_" + p.key).value = h.get(p.key);
+    if (spacerCtx) {
+      $("spacerBanner").textContent = `From the materials explorer: ${spacerCtx.spacer}. ${spacerCtx.spacer_note} J and γ below are estimated from the spacer's length and flexibility (an illustrative mapping, not a fit).`;
+      $("spacerBanner").style.display = "block";
+    }
+    refreshPaper();
+  }
+  if (h.get("view")) {
+    const r = await (await fetch("/api/runs/" + encodeURIComponent(h.get("view")))).json();
+    if (r.model) { $("model").value = r.model; buildParams(); await viewRun(r.id); }
+  }
+  if (h.get("compare")) { $("baseline").value = h.get("compare"); await loadBaseline(); }
+  schedule();
+}
+
+function buildParams() {
+  const key = $("model").value, m = SCHEMA.models[key];
+  $("blurb").textContent = m.blurb;
+  $("eyebrow").textContent = { cavity: "Superconducting qubit readout", spinchain: "Many-body benchmark", transmon: "The qubit inside Google's and IBM's chips", funnel: "Solar-cell materials" }[key] || "Model";
+  if (key !== "funnel") { spacerCtx = null; }
+  $("spacerBanner").style.display = key === "funnel" && spacerCtx ? "block" : "none";
+  const gpuOpt = [...$("backend").options].find(o => o.value === "gpu");
+  if (m.cpu_only) { $("backend").value = "cpu"; if (gpuOpt) gpuOpt.disabled = true; }
+  else if (gpuOpt) gpuOpt.disabled = !SCHEMA.gpu;
+  $("heroTitle").replaceChildren(document.createTextNode(m.title + " "), el("b", {}, "dynamics"));
+  const ps = $("preset"); ps.replaceChildren(el("option", { value: "" }, "Custom"));
+  for (const [k, p] of Object.entries(m.presets || {})) ps.append(el("option", { value: k }, p.label));
+  const box = $("params"); box.replaceChildren();
+  const saved = JSON.parse(localStorage.getItem("qd-params-" + key) || "{}");
+  for (const p of m.params) {
+    const f = el("div", { class: "field" }), id = "p_" + p.key;
+    const lab = el("div", { class: "lab" }); lab.append(el("label", { for: id }, p.label));
+    if (p.help) {   // extra explanation lives in a "?" tip so the row stays compact
+      const i = el("span", { class: "info", tabindex: "0", role: "img", "aria-label": p.help }, "?");
+      i.append(el("span", { class: "bubble" }, p.help)); lab.append(i);
+    }
+    f.append(lab);
+    let inp;
+    if (p.choices) {
+      inp = el("select", { id });
+      for (const c of p.choices) inp.append(el("option", { value: c }, c));
+    } else inp = el("input", { type: "number", id, min: p.min, max: p.max, step: p.step });
+    inp.value = saved[p.key] ?? p.default;
+    inp.oninput = inp.onchange = () => { $("preset").value = ""; refreshPaperSoon(); };
+    f.append(inp);
+    box.append(f);
+  }
+}
+
+function applyPreset() {
+  const m = SCHEMA.models[$("model").value];
+  const p = (m.presets || {})[$("preset").value];
+  if (!p) return;
+  for (const prm of m.params) $("p_" + prm.key).value = p[prm.key] ?? prm.default;
+  refreshPaper();
+  if ($("preset").value === "gpu") {
+    if (SCHEMA.gpu) $("backend").value = "gpu";
+    else showErr("The 14-spin preset needs the GPU backend. Run the dashboard on an NVIDIA GPU machine (see README: AWS).");
+  } else showErr("");
+}
+
+function currentParams() {
+  const out = {};
+  for (const p of SCHEMA.models[$("model").value].params) out[p.key] = $("p_" + p.key).value;
+  localStorage.setItem("qd-params-" + $("model").value, JSON.stringify(out));
+  return out;
+}
+
+// ------------------------------------------------------------------ run lifecycle
+function start() {
+  stop(true);
+  showErr("");
+  const q = new URLSearchParams({ model: $("model").value, backend: $("backend").value, pace: $("pace").value, ...currentParams(),
+    ...($("model").value === "funnel" && spacerCtx ? spacerCtx : {}) });
+  run = { meta: null, steps: [], status: "running" };
+  setStatus("running");
+  $("runBtn").disabled = true; $("stopBtn").disabled = false;
+  es = new EventSource("/api/run?" + q);
+  es.addEventListener("meta", e => { run.meta = JSON.parse(e.data); buildCharts(); schedule(); refreshHistory(); });
+  es.addEventListener("step", e => { run.steps.push(JSON.parse(e.data)); schedule(); });
+  es.addEventListener("done", () => finish("done"));
+  es.addEventListener("error", e => {
+    // named "error" events carry a message from the server; bare ones mean the connection dropped
+    if (e.data) { showErr(JSON.parse(e.data).message); finish("error"); }
+    else { if (!run.steps.length) showErr("Lost connection to the dashboard server."); finish(run.steps.length ? "stopped" : "error"); }
+  });
+}
+
+function stop(silent) {
+  if (es) { es.close(); es = null; if (!silent && run) finish("stopped"); }
+}
+
+function finish(status) {
+  if (es) { es.close(); es = null; }
+  if (run) run.status = status;
+  setStatus(status);
+  $("runBtn").disabled = false; $("stopBtn").disabled = true;
+  schedule();
+  renderTable();
+  setTimeout(refreshHistory, 300);
+}
+
+function setStatus(s) {
+  $("status").dataset.s = s;
+  $("statusTxt").textContent = { idle: "Idle", running: "Running", done: "Done", stopped: "Stopped", error: "Error" }[s];
+}
+function showErr(msg) { $("err").textContent = msg; $("err").style.display = msg ? "block" : "none"; }
+
+async function loadBaseline() {
+  const id = $("baseline").value;
+  baseline = id ? await (await fetch("/api/runs/" + encodeURIComponent(id))).json() : null;
+  schedule();
+}
+
+async function viewRun(id) {
+  stop(true);
+  const r = await (await fetch("/api/runs/" + encodeURIComponent(id))).json();
+  run = { meta: r, steps: r.steps, status: r.status, loaded: true };
+  if ($("model").value !== r.model) { $("model").value = r.model; buildParams(); paper = null; refreshPaper(); }
+  for (const [k, v] of Object.entries(r.params || {})) if ($("p_" + k)) $("p_" + k).value = v;
+  $("preset").value = "";
+  if ([...$("backend").options].some(o => o.value === r.backend && !o.disabled)) $("backend").value = r.backend;
+  setStatus(r.status === "running" ? "stopped" : r.status);
+  $("runBtn").disabled = false; $("stopBtn").disabled = true;
+  buildCharts(); schedule(); renderTable(); refreshHistory(); renderPaper();
+}
+
+// ------------------------------------------------------------------ history
+async function refreshHistory() {
+  const runs = await (await fetch("/api/runs")).json();
+  const t = $("hist"); t.replaceChildren();
+  const hr = el("tr");
+  for (const h of ["Run", "Model", "Backend", "Settings", "Points", "Time", "Status", "By", ""])
+    hr.append(el("th", ["Points", "Time"].includes(h) ? { class: "num" } : {}, h));
+  t.append(hr);
+  const sel = $("baseline"), keep = sel.value;
+  sel.replaceChildren(el("option", { value: "" }, "No baseline"));
+  for (const r of runs) {
+    const tr = el("tr");
+    if (run && run.meta && run.meta.id === r.id) tr.className = "cur";
+    const settings = Object.entries(r.params || {}).filter(([k]) => !["t_max", "steps"].includes(k))
+      .map(([k, v]) => `${k}=${v}`).join("  ");
+    for (const v of [r.id.split("_")[0], r.model, r.backend.toUpperCase(), settings]) tr.append(el("td", {}, String(v)));
+    tr.append(el("td", { class: "num" }, String(r.points)));
+    tr.append(el("td", { class: "num" }, fmt(r.elapsed, 1) + " s"));
+    tr.append(el("td", { class: "st-" + r.status }, r.status));
+    tr.append(el("td", { class: "by", title: r.owner_name || "No name recorded (an example, or run before sign-up existed)" }, r.owner_name || "—"));
+    const td = el("td");
+    const b1 = el("button", {}, "View"); b1.onclick = () => viewRun(r.id);
+    const b2 = el("button", {}, "Compare"); b2.onclick = () => { sel.value = r.id; loadBaseline(); };
+    td.append(b1, " ", b2);
+    if (r.can_delete) { const b3 = deleteButton(r.id); td.append(" ", b3); }
+    tr.append(td); t.append(tr);
+    sel.append(el("option", { value: r.id }, `${r.id.split("_")[0]} · ${r.model} · ${settings}`));
+  }
+  sel.value = keep;
+}
+
+// Two clicks, no pop-up: "Delete" -> "Confirm?" (4 s) -> deleted
+function deleteButton(id) {
+  const b = el("button", { class: "del", title: "Delete this run (moved to the server's trash)" }, "Delete");
+  let armed = null;
+  b.onclick = async () => {
+    if (!armed) {
+      b.textContent = "Confirm?"; b.classList.add("armed");
+      armed = setTimeout(() => { armed = null; b.textContent = "Delete"; b.classList.remove("armed"); }, 4000);
+      return;
+    }
+    clearTimeout(armed); b.disabled = true; b.textContent = "Deleting…";
+    const res = await fetch("/api/runs/" + encodeURIComponent(id), { method: "DELETE" });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) { showErr(out.error || "Could not delete the run."); b.disabled = false; b.textContent = "Delete"; armed = null; return; }
+    if ($("baseline").value === id) { $("baseline").value = ""; baseline = null; schedule(); }
+    if (run && run.meta && run.meta.id === id) history.replaceState(null, "", location.pathname + location.search);
+    refreshHistory();
+  };
+  return b;
+}
+
+// ------------------------------------------------------------------ line charts (small multiples, one scale each)
+let charts = [];
+
+function chartList() {
+  if (!run || !run.meta) return [];
+  const list = run.meta.observables.map((name, k) => ({ name, get: s => s.obs[k] }));
+  if (run.meta.backend === "cpu") list.push({ name: "Purity Tr(ρ²)", get: s => s.purity });
+  return list;
+}
+
+function buildCharts() {
+  const box = $("charts"); box.replaceChildren(); charts = [];
+  for (const c of chartList()) {
+    const card = el("div", { class: "card chart" });
+    const h = el("h3"); h.append(el("span", {}, c.name)); const now = el("span", { class: "now" }, ""); h.append(now);
+    const svg = svgEl("svg", { role: "img", "aria-label": c.name + " over time" });
+    const tip = el("div", { class: "tip" });
+    card.append(h, svg, tip); box.append(card);
+    const ch = { ...c, svg, tip, card, now };
+    svg.addEventListener("pointermove", ev => onHover(ch, ev));
+    svg.addEventListener("pointerleave", () => { hoverT = null; schedule(); });
+    charts.push(ch);
+  }
+}
+
+function baselineSeries(name) {
+  if (!baseline || !run || !run.meta || baseline.model !== run.meta.model) return null;
+  if (name.startsWith("Purity")) { const p = baseline.steps.map(s => [s.t, s.purity]).filter(p => p[1] != null); return p.length ? p : null; }
+  const k = baseline.observables.indexOf(name);
+  return k < 0 ? null : baseline.steps.map(s => [s.t, s.obs[k]]);
+}
+
+function niceTicks(lo, hi, n = 4) {
+  const span = hi - lo || 1, step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= step0);
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+
+const M = { l: 46, r: 70, t: 8, b: 22 };
+
+function drawChart(ch) {
+  const svg = ch.svg; svg.replaceChildren();
+  const W = svg.clientWidth || 500, Hh = svg.clientHeight || 200;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Hh}`);
+  const tEnd = run.meta.times[run.meta.times.length - 1];
+  // decimate long runs so the path stays cheap to draw (keeps ~1500 points)
+  const stride = Math.max(1, Math.floor(run.steps.length / 1500));
+  const cur = run.steps.filter((s, i) => i % stride === 0 || i === run.steps.length - 1).map(s => [s.t, ch.get(s)]).filter(p => p[1] != null);
+  const base = baselineSeries(ch.name);
+  ch.now.textContent = cur.length ? fmt(cur[cur.length - 1][1], 3) : "";
+  const all = cur.concat(base || []).map(p => p[1]);
+  if (!all.length) return;
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (hi - lo < 1e-6) { lo -= 0.5; hi += 0.5; }
+  const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+  const bEnd = base ? Math.max(tEnd, base[base.length - 1][0]) : tEnd;
+  const x = t => M.l + (t / bEnd) * (W - M.l - M.r);
+  const y = v => M.t + (1 - (v - lo) / (hi - lo)) * (Hh - M.t - M.b);
+  ch.scale = { x, y, W, Hh, bEnd };
+
+  for (const v of niceTicks(lo, hi)) {
+    svg.append(svgEl("line", { x1: M.l, x2: W - M.r, y1: y(v), y2: y(v), stroke: css("--grid"), "stroke-width": 1 }));
+    const tx = svgEl("text", { x: M.l - 8, y: y(v) + 4, "text-anchor": "end" });
+    tx.textContent = String(+v.toFixed(3)); svg.append(tx);
+  }
+  if (lo < 0 && hi > 0) svg.append(svgEl("line", { x1: M.l, x2: W - M.r, y1: y(0), y2: y(0), stroke: css("--axis"), "stroke-width": 1 }));
+  for (const t of niceTicks(0, bEnd, 5)) {
+    const tx = svgEl("text", { x: x(t), y: Hh - 5, "text-anchor": "middle" }); tx.textContent = t + (t === 0 ? "" : " " + tu()); svg.append(tx);
+  }
+  const path = (pts, color, dash) => {
+    if (pts.length < 1) return;
+    const d = pts.map((p, i) => (i ? "L" : "M") + x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1)).join("");
+    svg.append(svgEl("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": dash || "" }));
+  };
+  const labels = [];
+  if (base) { path(base, css("--series-2"), "5 4"); const lb = base[base.length - 1]; labels.push({ y: y(lb[1]), x: x(lb[0]), t: "baseline" }); }
+  path(cur, css("--series-1"));
+  if (cur.length) {
+    const last = cur[cur.length - 1];
+    svg.append(svgEl("circle", { cx: x(last[0]), cy: y(last[1]), r: 4, fill: css("--series-1"), stroke: css("--surface-1"), "stroke-width": 2 }));
+    if (base) labels.push({ y: y(last[1]), x: x(last[0]), t: "this run" });
+  }
+  // direct labels at line ends, nudged apart if they collide
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 13) labels[i].y = labels[i - 1].y + 13;
+  for (const l of labels) { const tx = svgEl("text", { x: Math.min(l.x + 8, W - M.r + 8), y: l.y + 4, class: "dl" }); tx.textContent = l.t; svg.append(tx); }
+
+  if (hoverT != null) {
+    const xs = x(Math.min(hoverT, bEnd));
+    svg.append(svgEl("line", { x1: xs, x2: xs, y1: M.t, y2: Hh - M.b, stroke: css("--text-muted"), "stroke-width": 1 }));
+    const near = pts => pts && pts.length ? pts.reduce((a, b) => Math.abs(b[0] - hoverT) < Math.abs(a[0] - hoverT) ? b : a) : null;
+    const pc = near(cur), pb = near(base);
+    for (const [p, c] of [[pb, css("--series-2")], [pc, css("--series-1")]])
+      if (p && Math.abs(p[0] - hoverT) <= bEnd / 100 + 1e-9) svg.append(svgEl("circle", { cx: x(p[0]), cy: y(p[1]), r: 4, fill: c, stroke: css("--surface-1"), "stroke-width": 2 }));
+    ch.near = { pc, pb };
+  } else ch.near = null;
+}
+
+function onHover(ch, ev) {
+  if (!ch.scale) return;
+  const r = ch.svg.getBoundingClientRect();
+  const px = (ev.clientX - r.left) * (ch.scale.W / r.width);
+  hoverT = Math.max(0, Math.min(ch.scale.bEnd, (px - M.l) / (ch.scale.W - M.l - M.r) * ch.scale.bEnd));
+  ch.hoverX = ev.clientX - ch.card.getBoundingClientRect().left;
+  charts.forEach(c => c.active = c === ch);
+  schedule();
+}
+
+function drawTip(ch) {
+  const tip = ch.tip;
+  if (!ch.active || hoverT == null || !ch.near) { tip.style.display = "none"; return; }
+  tip.replaceChildren();
+  const { pc, pb } = ch.near;
+  tip.append(el("div", { class: "t" }, "t = " + fmt(pc ? pc[0] : hoverT, 3) + " " + tu()));
+  const row = (v, label, color) => {
+    const r = el("div", { class: "row" }); const k = el("i", { class: "key" }); k.style.background = color;
+    r.append(k, el("b", {}, fmt(v, 4)), el("span", {}, label)); tip.append(r);
+  };
+  if (pc) row(pc[1], "this run", css("--series-1"));
+  if (pb) row(pb[1], "baseline", css("--series-2"));
+  tip.style.display = "block";
+  const w = tip.offsetWidth, cw = ch.card.clientWidth;
+  tip.style.left = Math.min(Math.max(8, ch.hoverX + 20), cw - w - 8) + "px";
+  tip.style.top = "38px";
+}
+
+function drawLegend() {
+  const lg = $("legend"); lg.replaceChildren();
+  if (!run || !run.meta) return;
+  const sameModel = baseline && baseline.model === run.meta.model;
+  if (!sameModel) {
+    lg.append(el("span", {}, `${run.meta.model} · ${run.meta.backend.toUpperCase()} · ${run.meta.size}-state system`));
+    if (baseline) lg.append(el("span", {}, "(baseline is a different model, hidden)"));
+    return;
+  }
+  const item = (color, label, dash) => { const s = el("span"); const i = el("i"); i.style.background = dash ? `repeating-linear-gradient(90deg, ${color} 0 5px, transparent 5px 9px)` : color; s.append(i, document.createTextNode(label)); lg.append(s); };
+  item(css("--series-1"), "this run");
+  item(css("--series-2"), "baseline · " + baseline.id.split("_")[0], true);
+}
+
+// ------------------------------------------------------------------ heatmap
+function hex(h) { h = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+function mix(c1, c2, t) { const a = hex(c1), b = hex(c2); return a.map((v, i) => Math.round(v + (b[i] - v) * t)); }
+// sequential on the dark surface: one green hue, near-black = 0 -> bright green = 1
+const SEQ = ["#121a06", "#22360a", "#36560d", "#4a7710", "#5e9800", "#76b900", "#a6dc4a", "#d7f2a6"];
+function seqColor(v) {  // sqrt scale: probabilities are mostly small, this keeps the tail visible
+  v = Math.sqrt(Math.max(0, Math.min(1, v))) * (SEQ.length - 1);
+  const i = Math.min(SEQ.length - 2, Math.floor(v)); return mix(SEQ[i], SEQ[i + 1], v - i);
+}
+// diverging: blue (-1 down) <-> neutral gray (0) <-> green (+1 up)
+function divColor(v) {
+  v = Math.max(-1, Math.min(1, v));
+  return v < 0 ? mix("#2b2b2b", "#3987e5", -v) : mix("#2b2b2b", "#76b900", v);
+}
+
+function drawHeat() {
+  const card = $("heatCard");
+  const has = run && run.meta && run.steps.length && run.steps[0].profile && run.steps[0].profile.length;
+  card.style.display = has ? "" : "none";
+  if (!has) return;
+  const p = run.meta.profile, rows = p.labels.length, cols = run.meta.times.length;
+  $("heatTitle").textContent = p.title + (p.kind === "diverging" ? " · green = up (+1), blue = down (−1)" : " · brighter = more likely (√ scale)");
+  $("heatEnd").textContent = fmt(run.meta.times[cols - 1], 2) + " " + tu(); $("heatStart").textContent = "0 " + tu();
+  const rl = $("heatRows"); rl.replaceChildren();
+  const every = Math.ceil(rows / 12);
+  p.labels.forEach((l, i) => rl.append(el("span", {}, i % every === 0 ? l : "")));
+  const cv = $("heat"); cv.width = cols; cv.height = rows;
+  const ctx = cv.getContext("2d"); const img = ctx.createImageData(cols, rows);
+  for (let c = 0; c < cols; c++) {
+    const s = run.steps[c];
+    for (let r = 0; r < rows; r++) {
+      const o = (r * cols + c) * 4;
+      const rgb = s ? (p.kind === "diverging" ? divColor(s.profile[r]) : seqColor(s.profile[r])) : [10, 10, 10];
+      img.data[o] = rgb[0]; img.data[o + 1] = rgb[1]; img.data[o + 2] = rgb[2]; img.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const rc = $("ramp").getContext("2d");
+  for (let i = 0; i < 160; i++) { const t = i / 159; const c = p.kind === "diverging" ? divColor(t * 2 - 1) : seqColor(t); rc.fillStyle = `rgb(${c})`; rc.fillRect(i, 0, 1, 8); }
+  $("rampLo").textContent = p.kind === "diverging" ? "−1 down" : "0";
+  $("rampHi").textContent = p.kind === "diverging" ? "+1 up" : "1";
+}
+
+$("heat").addEventListener("pointermove", ev => {
+  const tip = $("heatTip");
+  if (!run || !run.meta || !run.steps.length || !run.steps[0].profile.length) return;
+  const cv = $("heat"), r = cv.getBoundingClientRect();
+  const c = Math.floor((ev.clientX - r.left) / r.width * cv.width), row = Math.floor((ev.clientY - r.top) / r.height * cv.height);
+  const s = run.steps[c];
+  if (!s || row < 0 || row >= run.meta.profile.labels.length) { tip.style.display = "none"; return; }
+  tip.replaceChildren(el("div", { class: "t" }, "t = " + fmt(s.t, 3) + " " + tu()));
+  const rr = el("div", { class: "row" }); rr.append(el("b", {}, fmt(s.profile[row], 4)), el("span", {}, run.meta.profile.labels[row])); tip.append(rr);
+  tip.style.display = "block";
+  tip.style.left = Math.min(ev.clientX - r.left + 16, r.width - tip.offsetWidth) + "px";
+  tip.style.top = (ev.clientY - r.top + 12) + "px";
+});
+$("heat").addEventListener("pointerleave", () => $("heatTip").style.display = "none");
+
+// ------------------------------------------------------------------ tiles, table
+function drawTiles() {
+  const n = run.steps.length, total = run.meta.times.length, last = run.steps[n - 1];
+  $("runIdTxt").textContent = run.meta.id + (run.loaded ? " (saved)" : "");
+  $("progTxt").textContent = `${n} / ${total}`;
+  $("progBar").style.width = (100 * n / total) + "%";
+  const elapsed = last ? last.elapsed : 0;
+  $("elapsedTxt").textContent = fmt(elapsed, 1) + " s";
+  const rate = n > 1 && elapsed > 0 ? (n - 1) / elapsed : null;
+  $("speedTxt").textContent = rate ? fmt(rate, rate < 10 ? 1 : 0) : "—";
+  $("etaTxt").textContent = run.status === "running" && rate ? `about ${fmt((total - n) / rate, 0)} s left` : (last ? `simulated ${fmt(last.t, 2)} ${tu()}` : " ");
+  $("sizeTxt").textContent = run.meta.size.toLocaleString() + " states";
+  $("sizeHint").textContent = `density matrix ${run.meta.size}×${run.meta.size} · ${run.meta.noise_channels} noise channels`;
+  $("purityTxt").textContent = last && last.purity != null ? fmt(last.purity, 3) : "—";
+}
+
+function rowsForTable() {
+  if (!run || !run.meta) return [[], []];
+  const cpu = run.meta.backend === "cpu";
+  const head = [`t (${tu()})`, ...run.meta.observables, ...(cpu ? ["purity"] : [])];
+  const body = run.steps.map(s => [s.t, ...s.obs, ...(cpu ? [s.purity] : [])]);
+  return [head, body];
+}
+function renderTable() {
+  if (!$("tableDetails").open) return;
+  const [head, body] = rowsForTable(); const t = $("dataTable"); t.replaceChildren();
+  const hr = el("tr"); head.forEach(h => hr.append(el("th", {}, h))); t.append(hr);
+  const frag = document.createDocumentFragment();
+  for (const r of body.slice(0, 5000)) { const tr = el("tr"); r.forEach(v => tr.append(el("td", {}, fmt(v, 5)))); frag.append(tr); }
+  t.append(frag);
+}
+function downloadCsv() {
+  const [head, body] = rowsForTable(); if (!body.length) return;
+  const q = s => `"${String(s).replace(/"/g, '""')}"`;
+  const csv = [head.map(q).join(","), ...body.map(r => r.join(","))].join("\n");
+  const a = el("a", { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: (run.meta.id || "run") + ".csv" });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+
+// ------------------------------------------------------------------ transmon: live paper figures
+let paper = null, paperTimer = null;
+function refreshPaperSoon() { clearTimeout(paperTimer); paperTimer = setTimeout(refreshPaper, 150); }
+async function refreshPaper() {
+  const model = $("model").value;
+  if (!["transmon", "funnel"].includes(model)) { paper = null; renderPaper(); return; }
+  const q = new URLSearchParams({ model, ...currentParams(), ...(model === "funnel" && spacerCtx ? spacerCtx : {}) });
+  const r = await fetch("/api/extras?" + q).then(r => r.json()).catch(() => null);
+  if (r && !r.error) { paper = r; renderPaper(); }
+}
+// figures follow the sliders; a saved transmon run being viewed shows its own
+function paperData() {
+  if (run && run.meta && run.meta.static && run.loaded) return { static: run.meta.static, derived: run.meta.derived };
+  return paper;
+}
+function renderPaper() {
+  const d = paperData();
+  const isFunnel = (run && run.loaded && run.meta ? run.meta.model : $("model").value) === "funnel";
+  $("staticHead").firstChild.textContent = isFunnel ? "What-if sweeps " : "From the paper ";
+  $("staticSource").textContent = isFunnel
+    ? "efficiency at the end time, everything else fixed · dotted line = your setting"
+    : "Koch et al., Phys. Rev. A 76, 042319 (2007) · recomputed exactly for your settings";
+  $("derivedWrap").style.display = d ? "" : "none";
+  $("staticWrap").style.display = d ? "" : "none";
+  if (!d) return;
+  const dt = $("derived"); dt.replaceChildren();
+  for (const t of d.derived) {
+    const tile = el("div", { class: "tile" });
+    tile.append(el("div", { class: "k" }, t.k), el("div", { class: "v" }, t.v), el("div", { class: "h" }, t.h));
+    dt.append(tile);
+  }
+  const box = $("static");
+  if (box.children.length !== d.static.length) {
+    box.replaceChildren();
+    for (const c of d.static) {
+      const card = el("div", { class: "card chart" });
+      const h = el("h3"); h.append(el("span", {}, c.title));
+      const svg = svgEl("svg", { role: "img", "aria-label": c.title });
+      const tip = el("div", { class: "tip" });
+      const note = el("div", { class: "note" }, c.note);
+      card.append(h, note, svg, tip);
+      box.append(card);
+      const st = { svg, tip, card, h, note };
+      card._st = st;
+      svg.addEventListener("pointermove", ev => { st.hx = ev; drawXY(st, st.chart); });
+      svg.addEventListener("pointerleave", () => { st.hx = null; drawXY(st, st.chart); });
+    }
+  }
+  d.static.forEach((c, i) => {
+    const st = box.children[i]._st; st.chart = c;
+    st.h.firstChild.textContent = c.title;
+    st.note.textContent = c.note;
+    drawXY(st, c);
+  });
+}
+
+// categorical order validated on #141414: green, blue, orange, violet
+const LEVEL_COLORS = ["#6aa800", "#3987e5", "#d95926", "#9085e9"];
+const SUP = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
+const pow10 = e => "10" + String(e).split("").map(ch => SUP[ch]).join("");
+
+function drawXY(st, c) {
+  const svg = st.svg; svg.replaceChildren();
+  const W = svg.clientWidth || 420, Hh = svg.clientHeight || 200;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Hh}`);
+  const Mx = { l: 50, r: 64, t: 8, b: 26 };
+  const tf = v => c.log ? Math.log10(v) : v;
+  const vals = c.series.flatMap(s => s.y).filter(v => v != null && (!c.log || v > 0)).map(tf);
+  if (!vals.length) return;
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (c.log) { lo = Math.floor(lo); hi = Math.ceil(hi); } else { const pad = (hi - lo) * 0.06 || 0.5; lo -= pad; hi += pad; }
+  const fx = v => c.logx ? Math.log10(v) : v;
+  const x0 = c.x[0], x1 = c.x[c.x.length - 1];
+  const X = v => Mx.l + (fx(v) - fx(x0)) / (fx(x1) - fx(x0)) * (W - Mx.l - Mx.r);
+  const Yt = t => Mx.t + (1 - (t - lo) / (hi - lo)) * (Hh - Mx.t - Mx.b);
+  const Y = v => Yt(tf(v));
+  const yt = c.log ? Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).filter((e, i, a) => a.length <= 8 || (e - lo) % 2 === 0) : niceTicks(lo, hi);
+  for (const t of yt) {
+    svg.append(svgEl("line", { x1: Mx.l, x2: W - Mx.r, y1: Yt(t), y2: Yt(t), stroke: css("--grid"), "stroke-width": 1 }));
+    const tx = svgEl("text", { x: Mx.l - 8, y: Yt(t) + 4, "text-anchor": "end" }); tx.textContent = c.log ? pow10(t) : String(+t.toFixed(3)); svg.append(tx);
+  }
+  const xt = c.logx ? Array.from({ length: Math.floor(Math.log10(x1)) - Math.ceil(Math.log10(x0)) + 1 }, (_, i) => Math.pow(10, Math.ceil(Math.log10(x0)) + i)) : niceTicks(x0, x1, 5);
+  for (const t of xt) {
+    const tx = svgEl("text", { x: X(t), y: Hh - 8, "text-anchor": "middle" }); tx.textContent = String(+t.toFixed(2)); svg.append(tx);
+  }
+  const xl = svgEl("text", { x: W - Mx.r + 20, y: Hh - 8, "text-anchor": "start" }); xl.textContent = c.xlabel.replace("offset charge ", "").replace(/ \(.*\)$/, "").split(" ").slice(-1)[0]; svg.append(xl);
+  if (c.marker != null) {  // the design you picked
+    const xm = X(c.marker);
+    svg.append(svgEl("line", { x1: xm, x2: xm, y1: Mx.t, y2: Hh - Mx.b, stroke: css("--brand"), "stroke-width": 1, "stroke-dasharray": "3 3" }));
+    const t = svgEl("text", { x: xm + 4, y: Mx.t + 10, class: "marker" }); t.textContent = "you: " + c.marker; svg.append(t);
+  }
+  const labels = [];
+  c.series.forEach((s, k) => {
+    const color = LEVEL_COLORS[k % LEVEL_COLORS.length];
+    let d = "", pen = false, last = null;
+    s.y.forEach((v, i) => {
+      if (v == null || (c.log && v <= 0)) { pen = false; return; }
+      d += (pen ? "L" : "M") + X(c.x[i]).toFixed(1) + "," + Y(v).toFixed(1); pen = true; last = [c.x[i], v];
+    });
+    svg.append(svgEl("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round" }));
+    if (last && c.series.length > 1) labels.push({ y: Y(last[1]), x: X(last[0]), t: s.name });
+  });
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 13) labels[i].y = labels[i - 1].y + 13;
+  for (const l of labels) { const t = svgEl("text", { x: l.x + 6, y: l.y + 4, class: "dl" }); t.textContent = l.t; svg.append(t); }
+  // hover: crosshair snaps to the nearest x, one tooltip lists every series
+  const tip = st.tip;
+  if (!st.hx) { tip.style.display = "none"; return; }
+  const r = svg.getBoundingClientRect();
+  const px = (st.hx.clientX - r.left) * (W / r.width);
+  const fv = fx(x0) + (px - Mx.l) / (W - Mx.l - Mx.r) * (fx(x1) - fx(x0));
+  let idx = 0; c.x.forEach((v, i) => { if (Math.abs(fx(v) - fv) < Math.abs(fx(c.x[idx]) - fv)) idx = i; });
+  const xs = X(c.x[idx]);
+  svg.append(svgEl("line", { x1: xs, x2: xs, y1: Mx.t, y2: Hh - Mx.b, stroke: css("--text-muted"), "stroke-width": 1 }));
+  tip.replaceChildren(el("div", { class: "t" }, `${c.xlabel} = ${(+c.x[idx]).toPrecision(3)}`));
+  c.series.forEach((s, k) => {
+    const v = s.y[idx]; if (v == null) return;
+    svg.append(svgEl("circle", { cx: xs, cy: Y(v), r: 4, fill: LEVEL_COLORS[k % 4], stroke: css("--surface-1"), "stroke-width": 2 }));
+    const row = el("div", { class: "row" }); const key = el("i", { class: "key" }); key.style.background = LEVEL_COLORS[k % 4];
+    row.append(key, el("b", {}, c.log ? v.toExponential(2) : v.toFixed(3)), el("span", {}, s.name)); tip.append(row);
+  });
+  tip.style.display = "block";
+  const cardX = st.hx.clientX - st.card.getBoundingClientRect().left;
+  tip.style.left = Math.min(Math.max(8, cardX + 20), st.card.clientWidth - tip.offsetWidth - 8) + "px";
+  tip.style.top = "60px";
+}
+
+// ------------------------------------------------------------------ render loop
+function schedule() { if (!dirty) { dirty = true; requestAnimationFrame(render); } }
+let lastTable = 0;
+function render() {
+  dirty = false;
+  drawLegend();
+  if (run && run.meta) {
+    charts.forEach(c => { drawChart(c); drawTip(c); });
+    drawHeat(); drawTiles();
+    // while running, refresh an open table at most once a second (finish() does the final one)
+    if ($("tableDetails").open && run.status === "running" && performance.now() - lastTable > 1000) {
+      lastTable = performance.now(); renderTable();
+    }
+  } else $("heatCard").style.display = "none";
+}
+addEventListener("resize", () => { schedule(); renderPaper(); });
+init().catch(e => showErr("Could not reach the dashboard server: " + e.message));
+// "?" tips near the right edge open leftwards so they stay on screen
+for (const ev of ["pointerover", "focusin"]) document.addEventListener(ev, e => {
+  const i = e.target.closest && e.target.closest(".info"); if (!i) return;
+  const b = i.querySelector(".bubble"); if (!b) return;
+  b.style.left = "0"; b.style.right = "auto";
+  requestAnimationFrame(() => { if (b.getBoundingClientRect().right > innerWidth - 8) { b.style.left = "auto"; b.style.right = "0"; } });
+});
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>

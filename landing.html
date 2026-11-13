@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qtum Dynamics · simulate perovskite solar materials before you make them</title>
+<meta name="description" content="Free research tools for perovskite solar materials: a materials explorer, new spacer molecule designs and live quantum-dynamics simulations on NVIDIA CUDA-Q.">
+<script>
+  // old dashboard links (/#model=…, /#view=…) now live at /dashboard
+  if (/(^|[#&])(model|view|compare)=/.test(location.hash)) location.replace("/dashboard" + location.hash);
+</script>
+<style>
+:root {
+  color-scheme: dark;
+  --page: #000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --brand: #76b900; --brand-hover: #8ccf14; --critical: #e25555;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); color: var(--text-primary); }
+body { font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--brand); }
+a:hover { color: var(--brand-hover); }
+.topline { height: 3px; background: var(--brand); }
+.bar { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.spacer { flex: 1; }
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--brand); background: var(--brand); color: #000;
+  font-weight: 700; padding: 10px 18px; border-radius: 2px; text-decoration: none; cursor: pointer; font-size: 14.5px; }
+.btn:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: #000; }
+.btn.ghost { background: transparent; color: var(--text-primary); border-color: #3a3a3a; }
+.btn.ghost:hover { border-color: var(--brand); }
+.btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+main { max-width: 1120px; margin: 0 auto; padding: 0 28px 64px; }
+.hero { padding: 72px 0 48px; max-width: 820px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 12px; }
+h1 { font-size: 44px; line-height: 1.08; margin: 0 0 18px; letter-spacing: -.02em; }
+h1 b { color: var(--brand); font-weight: inherit; }
+.lead { font-size: 18px; color: var(--text-secondary); margin: 0 0 28px; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+section { padding: 44px 0; border-top: 1px solid var(--line); }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 22px;
+  display: flex; align-items: center; gap: 10px; }
+h2::before { content: ""; width: 3px; height: 13px; background: var(--brand); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.tile { background: var(--surface-1); border: 1px solid var(--line); border-radius: 2px; padding: 18px; }
+.tile h3 { margin: 10px 0 6px; font-size: 16px; }
+.tile p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+.tile .ic { color: var(--brand); }
+.tile .fig { color: var(--text-muted); font-size: 12.5px; margin-top: 10px; }
+ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+ol.steps li { counter-increment: s; border-left: 2px solid var(--brand); padding: 4px 0 4px 16px; }
+ol.steps li::before { content: counter(s); display: block; font-weight: 800; color: var(--brand); font-size: 22px; line-height: 1; margin-bottom: 8px; }
+ol.steps b { display: block; margin-bottom: 4px; }
+ol.steps span { color: var(--text-secondary); font-size: 14px; }
+.split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 40px; align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
+.split p { color: var(--text-secondary); margin: 0 0 14px; }
+form { background: var(--surface-1); border: 1px solid var(--line); border-radius: 2px; padding: 22px; display: grid; gap: 14px; }
+label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 600; }
+label .opt { color: var(--text-muted); font-weight: 400; }
+input:not([type=checkbox]), select { height: 44px; }
+input, select, textarea { font: inherit; color: var(--text-primary); background: #0a0a0a; border: 1px solid #3a3a3a; border-radius: 2px; padding: 10px 12px; }
+textarea { min-height: 90px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } }
+.consent { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; color: var(--text-secondary); }
+.consent input { margin-top: 4px; accent-color: var(--brand); }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.msg { font-size: 14px; min-height: 1em; }
+.msg.err { color: var(--critical); }
+.welcome { background: var(--surface-1); border: 1px solid #3a4d17; border-radius: 2px; padding: 22px; }
+.welcome h3 { margin: 0 0 8px; }
+.welcome p { color: var(--text-secondary); margin: 0 0 16px; }
+.privacy { font-size: 13.5px; color: var(--text-secondary); }
+.privacy summary { cursor: pointer; color: var(--text-primary); font-weight: 600; }
+footer { border-top: 1px solid var(--line); padding: 24px 28px; color: var(--text-muted); font-size: 12.5px; max-width: 1120px; margin: 0 auto; }
+footer p { margin: 0 0 6px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+<header class="bar">
+  <div class="mark"></div><div class="brand">Qtum Dynamics</div>
+  <div class="spacer"></div>
+  <a class="btn ghost" id="top-cta" href="#signup">Get access</a>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="eyebrow">Open research tools · perovskite solar</div>
+    <h1>Simulate perovskite solar materials <b>before you make them.</b></h1>
+    <p class="lead">Rank the recipes you can buy today, design spacer molecules that don't exist yet, and watch the
+      quantum physics of a film play out live. Free for researchers; the code is open source.</p>
+    <div class="ctas">
+      <a class="btn" href="#signup" id="hero-cta">Sign up for free access</a>
+      <a class="btn ghost" href="#tools">See what's inside</a>
+    </div>
+  </div>
+
+  <section id="tools">
+    <h2>What's inside</h2>
+    <div class="tiles">
+      <div class="tile">
+        <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>
+        <h3>Materials explorer</h3>
+        <p>Purchasable perovskite recipes, ranked against the published record of real devices.</p>
+        <div class="fig">1,250 formulas · 78 cations</div>
+      </div>
+      <div class="tile">
+        <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M12 2.5 20.5 7.3v9.4L12 21.5 3.5 16.7V7.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg></span>
+        <h3>New molecules</h3>
+        <p>Generated spacer cations for custom synthesis, scored for performance and ease of making.</p>
+        <div class="fig">167 designs · checked against PubChem</div>
+      </div>
+      <div class="tile">
+        <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M2 12h3l3-7 4 14 4-10 2 3h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <h3>Live dynamics dashboard</h3>
+        <p>Run energy funnelling in layered films, qubit and spin-chain models, and watch each time step stream in.</p>
+        <div class="fig">Built on NVIDIA CUDA-Q</div>
+      </div>
+      <div class="tile">
+        <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="3.5" cy="12" r="2" fill="currentColor"/><circle cx="9.2" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="14.8" cy="12" r="2" fill="currentColor"/><circle cx="20.5" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+        <h3>Spin chain at scale</h3>
+        <p>A 100-spin quantum simulation and a preview of how today's quantum hardware noise would change it.</p>
+        <div class="fig">Ready for GPU scale-up</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><b>Rank</b><span>Match what suppliers sell against thousands of published devices.</span></li>
+      <li><b>Design</b><span>Generate new spacer molecules where the catalogue runs out.</span></li>
+      <li><b>Simulate</b><span>Model how energy moves through the film, from a laptop to GPUs.</span></li>
+      <li><b>Test</b><span>Partner labs make the top picks; results feed the next ranking.</span></li>
+    </ol>
+  </section>
+
+  <section id="signup">
+    <h2>Get access</h2>
+    <div class="split">
+      <div>
+        <p>Tell us a little about yourself and you'll be straight in: no password, no waiting. Your browser stays
+          signed in on this device.</p>
+        <p>The source code is open under the Apache 2.0 licence: <span id="gh">coming soon on GitHub</span>.</p>
+        <details class="privacy" id="privacy">
+          <summary>Privacy note</summary>
+          <p>We collect what you type in this form (name, email, organisation, role and interest), the time you
+            signed up, and one cookie that keeps you signed in. We use it to give you access and to contact you
+            about this project. It is stored on our server, not sold, and not shared with anyone else. To see,
+            correct or delete your details, email <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>.</p>
+        </details>
+      </div>
+
+      <div>
+        <div class="welcome" id="welcome" hidden>
+          <h3 id="welcome-h">You're signed in.</h3>
+          <p>Open the tools from here, or from the menu on any page.</p>
+          <div class="ctas">
+            <a class="btn" href="/dashboard">Open the dashboard</a>
+            <a class="btn ghost" href="/explorer">Materials explorer</a>
+          </div>
+        </div>
+
+        <form id="form" novalidate>
+          <div class="row2">
+            <label>Name <input name="name" autocomplete="name" maxlength="100" required></label>
+            <label>Email <input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+          </div>
+          <div class="row2">
+            <label><span>Organisation <span class="opt">(optional)</span></span><input name="organisation" autocomplete="organization" maxlength="150"></label>
+            <label><span>Role</span>
+              <select name="role">
+                <option value="">Choose one</option>
+                <option>Academic researcher</option><option>Industry researcher</option><option>Student</option>
+                <option>Materials supplier</option><option>Investor</option><option>Other</option>
+              </select>
+            </label>
+          </div>
+          <label><span>What would you like to use it for? <span class="opt">(optional)</span></span>
+            <textarea name="interest" maxlength="1500"></textarea></label>
+          <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <label class="consent"><input type="checkbox" name="consent" value="1" required>
+            <span>I agree to the <a href="#privacy" id="privacy-link">privacy note</a>.</span></label>
+          <div><button class="btn" type="submit" id="submit">Sign up and open the tools</button></div>
+          <div class="msg" id="msg" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Device data: The Perovskite Database Project (Jacobsson et al., <i>Nature Energy</i> 2022), CC BY 4.0. Molecule
+    lookups: PubChem. Simulations use NVIDIA CUDA-Q; Qtum Dynamics is not affiliated with NVIDIA.</p>
+  <p>Research tools, provided as is. Results are model predictions, not lab measurements.</p>
+</footer>
+
+<script>
+const GITHUB = "";   // set once the repository is public
+if (GITHUB) document.getElementById("gh").innerHTML = `<a href="${GITHUB}">${GITHUB.replace("https://", "")}</a>`;
+
+const next = (() => {   // after sign-up, go back to the page that sent people here (same site only)
+  const n = new URLSearchParams(location.search).get("next") || "/dashboard";
+  return /^\/[\w\-./]*$/.test(n) && n !== "/" ? n : "/dashboard";
+})();
+
+function signedIn(name) {
+  document.getElementById("form").hidden = true;
+  document.getElementById("welcome").hidden = false;
+  document.getElementById("welcome-h").textContent = name ? `Welcome, ${name}.` : "You're signed in.";
+  for (const id of ["top-cta", "hero-cta"]) {
+    const a = document.getElementById(id);
+    a.textContent = "Open the dashboard"; a.href = "/dashboard";
+  }
+}
+
+fetch("/api/session").then(r => r.json()).then(s => { if (s.signed_in) signedIn(s.name); }).catch(() => {});
+
+document.getElementById("privacy-link").addEventListener("click", () => { document.getElementById("privacy").open = true; });
+
+document.getElementById("form").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const f = ev.target, msg = document.getElementById("msg"), btn = document.getElementById("submit");
+  const data = Object.fromEntries(new FormData(f));
+  data.consent = f.consent.checked;
+  msg.className = "msg"; msg.textContent = "";
+  if (!data.name.trim()) return showErr("Please give your name.", f.name);
+  if (!f.email.checkValidity() || !data.email.trim()) return showErr("Please give a valid email address.", f.email);
+  if (!data.consent) return showErr("Please tick the box to agree to the privacy note.", f.consent);
+  btn.disabled = true; msg.textContent = "Signing you up…";
+  try {
+    const r = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    const out = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(out.error || "Something went wrong. Please try again.");
+    msg.textContent = "Done. Opening the tools…";
+    location.href = next;
+  } catch (e) {
+    showErr(e.message);
+  } finally {
+    btn.disabled = false;
+  }
+  function showErr(text, field) {
+    msg.className = "msg err"; msg.textContent = text;
+    if (field) field.focus();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Qtum Dynamics · sign-ups</title>
+<style>
+:root { color-scheme: dark; --line: #262626; --brand: #76b900; --muted: #8a8a8a; --critical: #e25555; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #000; color: #f2f2f2; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.topline { height: 3px; background: var(--brand); }
+main { max-width: 1280px; margin: 0 auto; padding: 28px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); margin: 0 0 20px; }
+form { display: flex; gap: 10px; max-width: 460px; }
+input { flex: 1; font: inherit; color: inherit; background: #0a0a0a; border: 1px solid #3a3a3a; border-radius: 2px; padding: 9px 12px; }
+button, a.btn { font: inherit; font-weight: 700; border: 1px solid var(--brand); background: var(--brand); color: #000; border-radius: 2px;
+  padding: 9px 16px; cursor: pointer; text-decoration: none; }
+a.btn.ghost { background: transparent; color: #f2f2f2; border-color: #3a3a3a; }
+.msg { margin-top: 10px; color: var(--critical); min-height: 1em; }
+.tools { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+td.when { white-space: nowrap; color: #b3b3b3; font-variant-numeric: tabular-nums; }
+td.int { max-width: 420px; color: #b3b3b3; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+<main>
+  <h1>Sign-ups</h1>
+  <p class="sub" id="sub">Admin only. Enter the admin key from the server's <code>deploy/.env</code>.</p>
+
+  <form id="login" hidden>
+    <input id="key" type="password" autocomplete="current-password" placeholder="Admin key" aria-label="Admin key">
+    <button type="submit">Sign in</button>
+  </form>
+  <div class="msg" id="msg" role="status"></div>
+
+  <div id="list" hidden>
+    <div class="tools">
+      <a class="btn" href="/api/admin/registrations?format=csv">Download CSV</a>
+      <a class="btn ghost" href="/dashboard">Dashboard</a>
+    </div>
+    <table>
+      <thead><tr><th>When (your time)</th><th>Name</th><th>Email</th><th>Organisation</th><th>Role</th><th>Interest</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function td(text, cls) { const c = document.createElement("td"); c.textContent = text || ""; if (cls) c.className = cls; return c; }
+
+async function load() {
+  const r = await fetch("/api/admin/registrations");
+  if (r.status === 403 || r.status === 401) { $("login").hidden = false; $("key").focus(); return; }
+  const regs = await r.json();
+  $("login").hidden = true; $("list").hidden = false;
+  $("sub").textContent = `${regs.length} sign-up${regs.length === 1 ? "" : "s"}, newest first.`;
+  $("rows").replaceChildren(...regs.map(g => {
+    const tr = document.createElement("tr");
+    const when = new Date(g.time).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const email = td(""); const a = document.createElement("a");
+    a.href = "mailto:" + g.email; a.textContent = g.email; a.style.color = "var(--brand)"; email.append(a);
+    tr.append(td(when, "when"), td(g.name), email, td(g.organisation), td(g.role), td(g.interest, "int"));
+    return tr;
+  }));
+}
+
+$("login").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  $("msg").textContent = "";
+  const r = await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ key: $("key").value }) });
+  if (!r.ok) { $("msg").textContent = (await r.json().catch(() => ({}))).error || "Sign-in failed."; return; }
+  $("key").value = "";
+  load();
+});
+load();
+</script>
+</body>
+</html>

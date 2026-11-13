@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New spacer molecules · custom synthesis</title>
+<style>
+.viz-root {
+  color-scheme: dark;
+  --page: #000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --brand: #76b900; --brand-hover: #8ccf14;
+  /* score parts: categorical order validated on #141414 (green, blue, orange, violet) */
+  --s1: #6aa800; --s2: #3987e5; --s3: #d95926; --s4: #9085e9;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh; }
+.topline { height: 3px; background: var(--brand); }
+.bar-top { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #000; position: sticky; top: 0; z-index: 10; }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.tag { color: var(--text-muted); font-size: 12px; border-left: 1px solid var(--line); padding-left: 14px; }
+.spacer { flex: 1; }
+.navlink { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border: 1px solid transparent; }
+.navlink:hover { color: var(--brand); border-color: var(--line); }
+main { padding: 24px 28px 56px; max-width: 1700px; margin: 0 auto; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 6px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0; font-weight: 700; }
+h1 b { color: var(--brand); }
+.sub { color: var(--text-secondary); margin: 6px 0 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 2px; padding: 16px 18px; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+.sec::before { content: ""; width: 3px; height: 12px; background: var(--brand); flex: none; }
+.pill { font-size: 12px; color: var(--text-muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+.tile { background: var(--surface-1); padding: 14px 18px; }
+.tile .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.tile .v { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.tile .h { font-size: 12px; color: var(--text-muted); }
+button, select, input { font: inherit; color: inherit; }
+select, input[type=search], input[type=number] { background: var(--surface-2); border: 1px solid #333; border-radius: 2px; padding: 7px 9px; }
+input[type=search] { width: 220px; } input[type=number] { width: 80px; }
+select:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible, tr:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+button { border: 1px solid #3a3a3a; background: transparent; border-radius: 2px; padding: 7px 14px; cursor: pointer; font-weight: 600; }
+button:hover { border-color: var(--brand); }
+button.primary { background: var(--brand); color: #000; border-color: var(--brand); }
+button.primary:hover { background: var(--brand-hover); }
+button:disabled { opacity: .4; cursor: default; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; margin-bottom: 14px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; color: var(--text-muted); }
+.actions { margin-left: auto; display: flex; gap: 8px; align-items: flex-end; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 16px; align-items: start; }
+.layout.solo { grid-template-columns: minmax(0, 1fr); }
+/* Details open: the list card stretches to the details panel's height and its table scrolls inside it. */
+.layout:not(.solo) { align-items: stretch; }
+.layout:not(.solo) > .card:first-child { display: flex; flex-direction: column; }
+.layout:not(.solo) > .card:first-child .scroll { flex: 1 1 auto; height: 0; min-height: 420px; max-height: none; }
+.layout.solo .detail { display: none; }
+.info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 1px solid #444; border-radius: 50%; font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: help; text-transform: none; letter-spacing: 0; }
+.info:hover, .info:focus-visible { border-color: var(--brand); color: var(--brand); }
+.info .bubble { display: none; position: absolute; left: 26px; top: -6px; width: 300px; background: #0a0a0a; border: 1px solid #333; padding: 8px 10px; font-size: 12px; font-weight: 400; line-height: 1.45; color: var(--text-secondary); z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.info:hover .bubble, .info:focus .bubble { display: block; }
+.closeBtn { float: right; padding: 2px 9px; font-size: 16px; line-height: 1; }
+@media (max-width: 1250px) { .layout { grid-template-columns: 1fr; } }
+.legend { display: flex; gap: 18px; flex-wrap: nowrap; white-space: nowrap; margin-left: auto; font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-secondary); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 10px; border-radius: 2px; display: inline-block; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #222; vertical-align: middle; }
+th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; background: var(--surface-1); z-index: 1; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: #1a1a1a; }
+tbody tr.sel td { background: #1d2610; }
+tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
+td img { display: block; width: 320px; height: 190px; border-radius: 2px; }
+.chip { display: inline-block; font-size: 11px; padding: 1px 6px; border: 1px solid #333; border-radius: 2px; color: var(--text-secondary); white-space: nowrap; }
+.new { color: var(--brand); font-weight: 700; }
+.muted { color: var(--text-muted); }
+.name { min-width: 220px; }
+.scorebar { display: flex; height: 10px; width: 140px; background: #222; border-radius: 2px; overflow: hidden; gap: 2px; }
+.scorebar i { display: block; height: 100%; }
+.scorecell { display: flex; align-items: center; gap: 8px; }
+.scorecell b { width: 28px; text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { max-height: 760px; overflow: auto; }
+.detail h2 { font-size: 17px; margin: 0 0 4px; }
+.detail img { width: 100%; max-width: 400px; display: block; margin: 8px 0; border: 1px solid var(--line); }
+.detail dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 10px; font-size: 13px; margin: 12px 0; }
+.detail dt { color: var(--text-muted); }
+.detail dd { margin: 0; }
+.detail .smiles { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; }
+.detail ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-secondary); font-size: 13px; }
+.btn-primary { display: inline-block; background: var(--brand); color: #000; text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 2px; margin-top: 8px; }
+.breakdown .row { display: grid; grid-template-columns: 140px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; color: var(--text-secondary); }
+.breakdown .track { height: 8px; background: #222; border-radius: 2px; overflow: hidden; }
+.breakdown .track i { display: block; height: 100%; }
+.breakdown b { text-align: right; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.tip { position: fixed; pointer-events: none; background: #0a0a0a; border: 1px solid #333; padding: 7px 10px; font-size: 12px; display: none; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.tip .r { display: flex; gap: 8px; align-items: center; }
+.tip .r i { width: 10px; height: 8px; display: inline-block; border-radius: 2px; }
+.foot { color: var(--text-muted); font-size: 12px; margin-top: 18px; max-width: 1200px; }
+.err { color: #ff9a9a; }
+input[type=checkbox] { accent-color: var(--brand); width: 16px; height: 16px; }
+.vib { margin-top: 14px; }
+.vib .legend { flex-wrap: wrap; white-space: normal; margin: 0 0 4px; gap: 6px 14px; }
+.vib-steplg { color: var(--text-muted); }
+.vibsvg { width: 100%; height: auto; display: block; margin: 6px 0; }
+.vib-steptxt { fill: var(--text-secondary); font-size: 10px; }
+.vib-axis { fill: var(--text-muted); font-size: 10px; }
+.vib-lead { font-size: 13px; color: var(--text-secondary); margin: 4px 0 8px; line-height: 1.45; }
+.vib-list { font-size: 12px !important; }
+.vib-note { font-size: 11px; line-height: 1.45; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <div class="topline"></div>
+  <div class="bar-top">
+    <div class="mark" aria-hidden="true"></div>
+    <div class="brand">Quantum Dynamics Lab</div>
+    <div class="tag">New spacer molecules · custom synthesis</div>
+    <div class="spacer"></div>
+    <a class="navlink" href="/explorer">Catalogue compositions</a>
+    <a class="navlink" href="/dashboard">Dynamics dashboard</a>
+  </div>
+  <main>
+    <div class="eyebrow">Custom synthesis</div>
+    <h1>New spacer <b>molecules</b></h1>
+    <p class="sub">Spacer cations designed from parts that already work: a charged ammonium end, a short carbon linker and a
+      core (fluorinated benzene, thiophene, pyridine, fluoroalkyl chain…). None is sold in the catalogue. Each is scored on
+      design rules, similarity to spacers proven in published cells, predicted energy funnelling, and ease of synthesis.
+      Tick the ones you want and download a synthesis request for your supplier.</p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card controls">
+      <div class="field"><label for="role">Type</label>
+        <select id="role"><option value="">All</option><option value="DJ spacer">Double-ended (DJ)</option><option value="RP spacer">Single-ended (RP)</option></select></div>
+      <div class="field"><label for="family">Family</label>
+        <select id="family"><option value="">All</option></select></div>
+      <div class="field"><label for="known">Novelty</label>
+        <select id="known"><option value="">All</option><option value="known">Known compound (in PubChem)</option><option value="new">Not in PubChem</option></select></div>
+      <div class="field"><label for="sa">Max synthesis difficulty (1–10)</label><input type="number" id="sa" min="1" max="10" step="0.5" value="4"></div>
+      <div class="field"><label for="q">Search</label><input type="search" id="q" placeholder="e.g. thiophen, fluoro, pyridin"></div>
+      <div class="actions">
+        <span class="pill" id="selCount">0 selected</span>
+        <button class="primary" id="csvBtn" disabled>Download synthesis request</button>
+      </div>
+    </div>
+
+    <div class="layout solo" id="layout">
+      <div class="card">
+        <div class="sec">Ranked molecules <span class="pill" id="count"></span>
+          <span class="info" tabindex="0" role="img" aria-label="Help">?<span class="bubble">Select a molecule to see its structure, why it ranks where it does, and its predicted energy funnel. Hover a score bar for its four parts.</span></span>
+          <div class="legend" id="legend"></div></div>
+        <div class="scroll"><table id="tbl"></table></div>
+      </div>
+      <div class="card detail" id="detail"></div>
+    </div>
+    <p class="foot" id="foot"></p>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+
+<script src="/vibchart.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, text) => { const e = document.createElement(tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+const PARTS = [
+  { key: "design", label: "Design rules", max: 28, color: "var(--s1)" },
+  { key: "evidence", label: "Similar to proven spacers", max: 30, color: "var(--s2)" },
+  { key: "funnel", label: "Predicted funnelling", max: 22, color: "var(--s3)" },
+  { key: "ease", label: "Ease of synthesis", max: 20, color: "var(--s4)" },
+];
+let DATA = null, selected = null;
+const picked = new Set();
+const img = m => el("img", { src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(m.svg), alt: m.label });
+
+async function init() {
+  DATA = await (await fetch("/api/molecules")).json();
+  await vibLoad();
+  if (DATA.error) { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, DATA.error)); return; }
+  const M = DATA.molecules;
+  const tiles = [
+    ["New molecules", M.length, "not sold in the catalogue"],
+    ["Double-ended (DJ)", M.filter(m => m.role === "DJ spacer").length, "two charged ends"],
+    ["Easy to make", M.filter(m => m.sa_score <= 2.5).length, "synthesis difficulty ≤ 2.5 of 10"],
+    ["Known compounds", DATA.counts.known_in_pubchem, "amine already in PubChem"],
+    ["Not in PubChem", DATA.counts.not_in_pubchem, "possibly never made"],
+  ];
+  $("tiles").replaceChildren(...tiles.map(([k, v, h]) => { const t = el("div", { class: "tile" }); t.append(el("div", { class: "k" }, k), el("div", { class: "v" }, String(v)), el("div", { class: "h" }, h)); return t; }));
+  for (const f of [...new Set(M.map(m => m.family))].sort()) $("family").append(el("option", { value: f }, f));
+  $("legend").replaceChildren(...PARTS.map(p => { const s = el("span"); const i = el("i"); i.style.background = p.color; s.append(i, document.createTextNode(`${p.label} (max ${p.max})`)); return s; }));
+  $("foot").textContent = `Generated ${DATA.generated}. Method: ${DATA.method}. Synthesis difficulty is RDKit's SA score (1 easy, 10 hard), a rough guide only. ` +
+    "\"Known compound\" means the free amine has a PubChem entry, so a route very likely exists; the iodide salt is then a one-step reaction with HI. " +
+    "Funnel predictions use an illustrative mapping from spacer length and flexibility.";
+  for (const id of ["role", "family", "known", "sa"]) $(id).onchange = render;
+  $("q").oninput = render;
+  $("csvBtn").onclick = downloadCsv;
+  render();
+}
+
+function render() {
+  const f = { role: $("role").value, family: $("family").value, known: $("known").value, sa: +$("sa").value || 10, q: $("q").value.trim().toLowerCase() };
+  const rows = DATA.molecules.filter(m => (!f.role || m.role === f.role) && (!f.family || m.family === f.family) &&
+    (!f.known || (f.known === "known") === !!m.pubchem_cid) && m.sa_score <= f.sa &&
+    (!f.q || (m.label + " " + m.smiles + " " + m.family).toLowerCase().includes(f.q)));
+  $("count").textContent = `${rows.length} match`;
+  const t = $("tbl"); t.replaceChildren();
+  const thead = el("thead"), hr = el("tr");
+  for (const [h, c] of [["", ""], ["#", "num"], ["Structure", ""], ["Molecule", ""], ["Length Å", "num"], ["Difficulty", "num"], ["PubChem", ""], ["Funnel", "num"], ["Score", ""]]) hr.append(el("th", c ? { class: c } : {}, h));
+  thead.append(hr); t.append(thead);
+  const tb = el("tbody");
+  rows.forEach((m, i) => {
+    const tr = el("tr", { tabindex: "0" });
+    if (selected === m) tr.className = "sel";
+    const cb = el("input", { type: "checkbox", "aria-label": "Add to synthesis request" });
+    cb.checked = picked.has(m.smiles);
+    cb.onclick = e => { e.stopPropagation(); cb.checked ? picked.add(m.smiles) : picked.delete(m.smiles); updatePicked(); };
+    const tdc = el("td"); tdc.append(cb); tr.append(tdc);
+    tr.append(el("td", { class: "num muted" }, String(i + 1)));
+    const ti = el("td"); ti.append(img(m)); tr.append(ti);
+    const tn = el("td", { class: "name" }); tn.append(el("div", {}, m.label));
+    const meta = el("div"); meta.append(el("span", { class: "chip" }, m.role === "DJ spacer" ? "DJ" : "RP"), document.createTextNode(" "), el("span", { class: "chip" }, m.family)); tn.append(meta); tr.append(tn);
+    tr.append(el("td", { class: "num" }, m.desc.length_A.toFixed(1)));
+    tr.append(el("td", { class: "num" }, m.sa_score.toFixed(1)));
+    tr.append(m.pubchem_cid ? el("td", { class: "muted" }, "known") : el("td", { class: "new" }, "not found"));
+    tr.append(el("td", { class: "num" }, Math.round(100 * m.funnel.efficiency) + "%"));
+    const sc = el("td"), cell = el("div", { class: "scorecell" }), bar = el("div", { class: "scorebar" });
+    for (const p of PARTS) { const i_ = el("i"); i_.style.width = (m.parts[p.key] / 100 * 140) + "px"; i_.style.background = p.color; bar.append(i_); }
+    bar.onpointermove = ev => showTip(ev, m); bar.onpointerleave = () => $("tip").style.display = "none";
+    cell.append(el("b", {}, m.score.toFixed(0)), bar); sc.append(cell); tr.append(sc);
+    tr.onclick = tr.onkeydown = ev => { if (ev.type === "keydown" && ev.key !== "Enter") return; selected = m; render(); };
+    tb.append(tr);
+  });
+  t.append(tb);
+  if (selected) showDetail(selected);
+}
+
+function showTip(ev, m) {
+  const tip = $("tip"); tip.replaceChildren();
+  for (const p of PARTS) { const r = el("div", { class: "r" }); const i = el("i"); i.style.background = p.color; r.append(i, el("b", {}, m.parts[p.key].toFixed(1)), document.createTextNode(` / ${p.max}  ${p.label}`)); tip.append(r); }
+  tip.style.display = "block"; tip.style.left = (ev.clientX + 14) + "px"; tip.style.top = (ev.clientY + 14) + "px";
+}
+
+function funnelLink(m) {
+  const q = new URLSearchParams({ model: "funnel", J: m.funnel.J, gamma: m.funnel.gamma, n_max: 5, halide: "I",
+    spacer: `${m.label} (new molecule)`, spacer_note: `Length ${m.desc.length_A} Å, ${m.desc.rot_bonds} rotatable bonds, ${m.desc.aromatic_rings} aromatic rings → well spacing ${m.funnel.d} Å.` });
+  return "/dashboard#" + q.toString();
+}
+
+function showDetail(m) {
+  const d = $("detail"); d.replaceChildren();
+  $("layout").classList.remove("solo");
+  const x = el("button", { class: "closeBtn", "aria-label": "Close details", title: "Close" }, "×");
+  x.onclick = () => { selected = null; $("layout").classList.add("solo"); render(); };
+  d.append(x);
+  d.append(el("div", { class: "eyebrow" }, `${m.role === "DJ spacer" ? "Double-ended (DJ)" : "Single-ended (RP)"} spacer · ${m.family}`));
+  d.append(el("h2", {}, m.label));
+  const big = img(m); d.append(big);
+  const bd = el("div", { class: "breakdown" });
+  bd.append(el("div", { class: "sec" }, `Score ${m.score.toFixed(0)} / 100`));
+  for (const p of PARTS) {
+    const r = el("div", { class: "row" }), tr = el("div", { class: "track" }), i = el("i");
+    i.style.width = (100 * m.parts[p.key] / p.max) + "%"; i.style.background = p.color; tr.append(i);
+    r.append(el("span", {}, p.label), tr, el("b", {}, m.parts[p.key].toFixed(1))); bd.append(r);
+  }
+  d.append(bd);
+  const dl = el("dl");
+  const add = (k, v, cls) => { dl.append(el("dt", {}, k)); const dd = el("dd", cls ? { class: cls } : {}, v); dl.append(dd); return dd; };
+  add("Free amine (SMILES)", m.smiles, "smiles");
+  add("Salt to request", `${m.salt} · MW ≈ ${m.salt_mw} g/mol`);
+  const pc = add("PubChem", m.pubchem_cid ? "" : "not found: may never have been made (route needs a chemist's check)");
+  if (m.pubchem_cid) { const a = el("a", { href: `https://pubchem.ncbi.nlm.nih.gov/compound/${m.pubchem_cid}`, target: "_blank", rel: "noopener", class: "navlink" }, `CID ${m.pubchem_cid} ↗`); pc.append(a); }
+  add("Synthesis difficulty", `${m.sa_score} of 10 (${m.sa_score <= 2.5 ? "easy" : m.sa_score <= 3.5 ? "moderate" : "harder"})`);
+  add("Size and flexibility", `${m.desc.length_A} Å long · ${m.desc.heavy_atoms} heavy atoms · ${m.desc.rot_bonds} rotatable bonds · ${m.desc.aromatic_rings} aromatic rings · ${m.desc.fluorine} F`);
+  add("Nearest proven spacer", `${m.analogue.name} (similarity ${m.analogue.similarity}; ${m.analogue.devices} published devices, best ${m.analogue.best_pce}%)`);
+  add("Predicted funnel", `${Math.round(100 * m.funnel.efficiency)}% of energy reaches the bulk in 20 ps (n = 5, FA, iodide); J ≈ ${m.funnel.J} meV, γ ≈ ${m.funnel.gamma} meV`);
+  add("Composition to test", m.formula_n5.replace("(S)", `(${m.label})`));
+  d.append(dl);
+  if (m.design_notes.length) {
+    d.append(el("div", { class: "sec" }, "Design rules that apply"));
+    const ul = el("ul"); for (const n of m.design_notes) ul.append(el("li", {}, n)); d.append(ul);
+  }
+  const row = el("div");
+  const cb = el("button", {}, picked.has(m.smiles) ? "Remove from request" : "Add to synthesis request");
+  cb.onclick = () => { picked.has(m.smiles) ? picked.delete(m.smiles) : picked.add(m.smiles); updatePicked(); render(); };
+  row.append(cb, document.createTextNode(" "), el("a", { class: "btn-primary", href: funnelLink(m) }, "Simulate energy funnel →"));
+  d.append(row);
+  const vs = vibSection(m.smiles, vibTip); if (vs) d.append(vs);
+}
+function vibTip(ev, lines) {
+  const t = $("tip");
+  if (!ev) { t.style.display = "none"; return; }
+  t.replaceChildren(...lines.map(l => el("div", {}, l)));
+  t.style.display = "block"; t.style.left = (ev.clientX + 14) + "px"; t.style.top = (ev.clientY + 14) + "px";
+}
+
+function updatePicked() {
+  $("selCount").textContent = `${picked.size} selected`;
+  $("csvBtn").disabled = picked.size === 0;
+}
+
+function downloadCsv() {
+  const q = s => `"${String(s ?? "").replace(/"/g, '""')}"`;
+  const head = ["rank", "molecule", "salt_requested", "free_amine_smiles", "salt_mw_g_mol", "type", "family", "pubchem_cid", "synthesis_difficulty_1to10",
+    "quantity", "purity", "composition_to_test", "why", "nearest_proven_spacer"];
+  const ms = DATA.molecules.filter(m => picked.has(m.smiles));
+  const rows = ms.map(m => [DATA.molecules.indexOf(m) + 1, m.label, m.salt, m.smiles, m.salt_mw, m.role, m.family, m.pubchem_cid || "not found",
+    m.sa_score, "5 g", ">=99.5%, water <0.5%, CoA", m.formula_n5.replace("(S)", `(${m.label})`), m.design_notes.join("; "),
+    `${m.analogue.name} (sim ${m.analogue.similarity}, best ${m.analogue.best_pce}%)`]);
+  const csv = [head.map(q).join(","), ...rows.map(r => r.map(q).join(","))].join("\n");
+  const a = el("a", { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "synthesis_request.csv" });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+init().catch(e => { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, "Could not load molecules: " + e.message)); });
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>

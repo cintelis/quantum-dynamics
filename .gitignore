@@ -1,0 +1,21 @@
+# secrets and private deployment notes
+deploy/.env
+deploy/access_*.json
+deploy/PRIVATE-NOTES.md
+*.pem
+*.key
+
+# generated output and caches
+output/
+__pycache__/
+*.pyc
+
+# data that is not ours to publish, too big for git, or not yet public (see README "Data")
+data/perovskite_db/
+data/catalogue.json
+data/explorer.json
+data/round1_results_template.csv
+data/new_molecules.json
+data/vibrations.json
+data/pubchem_cache.json
+data/pubchem_smiles_cache.json
