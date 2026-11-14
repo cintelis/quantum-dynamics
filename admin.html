@@ -25,6 +25,8 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--lin
 th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 td.when { white-space: nowrap; color: #b3b3b3; font-variant-numeric: tabular-nums; }
 td.int { max-width: 420px; color: #b3b3b3; }
+td.int { white-space: pre-wrap; }
+.h2 { font-size: 20px; margin: 36px 0 4px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -49,6 +51,12 @@ td.int { max-width: 420px; color: #b3b3b3; }
       <thead><tr><th>When (your time)</th><th>Name</th><th>Email</th><th>Organisation</th><th>Role</th><th>Interest</th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
+    <h2 class="h2">Contact messages</h2>
+    <p class="sub" id="msub"></p>
+    <table>
+      <thead><tr><th>When (your time)</th><th>Name</th><th>Email</th><th>Organisation</th><th>Message</th></tr></thead>
+      <tbody id="mrows"></tbody>
+    </table>
   </div>
 </main>
 <script>
@@ -67,6 +75,16 @@ async function load() {
     const email = td(""); const a = document.createElement("a");
     a.href = "mailto:" + g.email; a.textContent = g.email; a.style.color = "var(--brand)"; email.append(a);
     tr.append(td(when, "when"), td(g.name), email, td(g.organisation), td(g.role), td(g.interest, "int"));
+    return tr;
+  }));
+  const msgs = await (await fetch("/api/admin/messages")).json();
+  $("msub").textContent = `${msgs.length} message${msgs.length === 1 ? "" : "s"} from the home page's Contact us form, newest first.`;
+  $("mrows").replaceChildren(...msgs.map(g => {
+    const tr = document.createElement("tr");
+    const when = new Date(g.time).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const email = td(""); const a = document.createElement("a");
+    a.href = "mailto:" + g.email; a.textContent = g.email; a.style.color = "var(--brand)"; email.append(a);
+    tr.append(td(when, "when"), td(g.name), email, td(g.organisation), td(g.message, "int"));
     return tr;
   }));
 }

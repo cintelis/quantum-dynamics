@@ -168,16 +168,22 @@ textarea { min-height: 90px; resize: vertical; }
   color: var(--brand); background: rgba(118,185,0,.10); border: 1px solid #2f3d14; border-radius: 2px; }
 .feat b { font-size: 15px; }
 .feat span:last-child { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
-.privacy-box { margin-top: 14px; background: var(--surface-1); border: 1px solid var(--line); }
-.privacy-box summary { display: flex; gap: 12px; align-items: center; padding: 14px 18px; cursor: pointer; list-style: none; }
-.privacy-box summary::-webkit-details-marker { display: none; }
-.privacy-box summary::after { content: "+"; margin-left: auto; color: var(--brand); font-size: 20px; line-height: 1; }
-.privacy-box[open] summary::after { content: "\2212"; }
-.privacy-box summary:hover b { color: var(--brand); }
-.privacy-box .ic { color: var(--brand); display: flex; }
-.privacy-box b { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
-.privacy-box .hint { color: var(--text-muted); font-size: 13px; }
-.privacy-box p { margin: 0; padding: 0 18px 16px 52px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; max-width: 900px; }
+.fold { margin-top: 14px; background: var(--surface-1); border: 1px solid var(--line); }
+.fold summary { display: flex; gap: 12px; align-items: center; padding: 14px 18px; cursor: pointer; list-style: none; }
+.fold summary::-webkit-details-marker { display: none; }
+.fold summary::after { content: "+"; margin-left: auto; color: var(--brand); font-size: 20px; line-height: 1; }
+.fold[open] summary::after { content: "\2212"; }
+.fold summary:hover b { color: var(--brand); }
+.fold .ic { color: var(--brand); display: flex; }
+.fold b { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.fold .hint { color: var(--text-muted); font-size: 13px; }
+.fold-body { padding: 2px 18px 18px 52px; max-width: 760px; }
+#contactForm { display: grid; gap: 12px; border: 0; background: none; padding: 0; margin: 0; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.send-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.send-row .note { color: var(--text-muted); font-size: 12.5px; }
+.sent { color: var(--text-secondary); margin: 0; }
+@media (max-width: 560px) { .fold-body { padding-left: 18px; } }
 .gh { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; color: var(--text-secondary);
   border: 1px solid var(--line); border-radius: 2px; transition: color .12s, border-color .12s; }
 .gh:hover, .gh:focus-visible { color: var(--text-primary); border-color: var(--brand); }
@@ -316,12 +322,25 @@ footer { border-top: 1px solid var(--line); background: #070707; }
         <span>Apache 2.0 licence. Read, run or improve the code on GitHub.</span>
       </a>
     </div>
-    <details class="privacy-box" id="privacy">
-      <summary><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span><b>Privacy</b><span class="hint">What we keep when you sign up</span></summary>
-      <p>When you sign up we keep what you type (name, email and, if you give them, organisation and role), the time
-          you signed up, and one cookie that keeps you signed in. We use it to give you access and to contact you about
-          this project. It stays on our server: never sold, never shared. To see, correct or delete your details, email
-          <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>. <a href="/privacy">Privacy page</a></p>
+    <details class="fold" id="contact">
+      <summary><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="1.5"/><path d="m3 6 9 7 9-7"/></svg></span><b>Contact us</b><span class="hint">Questions, ideas or a lab partnership</span></summary>
+      <div class="fold-body">
+        <form id="contactForm" novalidate>
+          <div class="row2">
+            <label>Name<input name="name" autocomplete="name" maxlength="100" required></label>
+            <label>Email<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+          </div>
+          <label><span>Organisation <span class="opt">(optional)</span></span><input name="organisation" autocomplete="organization" maxlength="150"></label>
+          <label>Message<textarea name="message" maxlength="5000" required></textarea></label>
+          <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+          <div class="send-row">
+            <button class="btn" type="submit">Send message</button>
+            <span class="note">We use your details only to reply. <a href="/privacy">Privacy</a></span>
+          </div>
+          <div class="msg" id="contactMsg" role="status"></div>
+        </form>
+        <p class="sent" id="contactSent" hidden>Thanks, your message is in. We'll reply by email.</p>
+      </div>
     </details>
   </section>
 </main>
@@ -347,6 +366,7 @@ footer { border-top: 1px solid var(--line); background: #070707; }
     <nav class="foot-col" aria-label="Project">
       <h4>Project</h4>
       <a href="#how">How it works</a>
+      <a href="#contact">Contact us</a>
       <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>
     </nav>
   </div>
@@ -361,6 +381,32 @@ const n = new URLSearchParams(location.search).get("next");
 if (n && /^\/[\w\-./]*(#[\w\-=&.%+]*)?$/.test(n) && n !== "/") location.replace(n);
 </script>
 <script type="module" src="/circuit-anim.js?v=1"></script>
+<script>
+// Contact us: opens from #contact links; sends to /api/contact (kept on the server, read on the admin page)
+(() => {
+  const box = document.getElementById("contact"), form = document.getElementById("contactForm"), msg = document.getElementById("contactMsg");
+  const openIfAsked = () => { if (location.hash === "#contact") { box.open = true; box.scrollIntoView({ block: "start" }); } };
+  addEventListener("hashchange", openIfAsked); openIfAsked();
+  document.querySelectorAll('a[href="#contact"]').forEach(a => a.addEventListener("click", () => { box.open = true; }));
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    msg.className = "msg"; msg.textContent = "";
+    const data = Object.fromEntries(new FormData(form));
+    const bad = !data.name.trim() ? "Please give your name." : !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(data.email.trim()) ? "Please give a valid email address."
+      : !data.message.trim() ? "Please write a message." : "";
+    if (bad) { msg.className = "msg err"; msg.textContent = bad; return; }
+    const btn = form.querySelector("button"); btn.disabled = true; btn.textContent = "Sending…";
+    try {
+      const r = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || "Could not send. Please email hello@qtumdynamics.com.");
+      form.hidden = true; document.getElementById("contactSent").hidden = false;
+    } catch (e) {
+      msg.className = "msg err"; msg.textContent = e.message;
+    } finally { btn.disabled = false; btn.textContent = "Send message"; }
+  });
+})();
+</script>
 <script>
 // Hero: a slowly turning ABX3 perovskite lattice (corner-sharing BX6 octahedra, A cations in the gaps),
 // with excitations hopping along the B-X-B bonds. Plain canvas, no libraries; still if reduced motion is on.

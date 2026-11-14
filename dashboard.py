@@ -16,7 +16,8 @@ Endpoints
 
 Public site (QUANTUM_SESSION_KEY set): / is the landing page with sign-up, /dashboard the dashboard. Every page
 can be viewed; running, deleting and the full molecule designs need a sign-up.
-POST /api/register, /api/logout, /api/admin/login; GET /api/session, /api/admin/registrations[?format=csv].
+POST /api/register, /api/contact, /api/logout, /api/admin/login;
+GET /api/session, /api/admin/registrations[?format=csv], /api/admin/messages.
 """
 import base64
 import csv
@@ -62,6 +63,7 @@ SESSION_KEY = os.environ.get("QUANTUM_SESSION_KEY", "").encode()
 ADMIN_KEY = os.environ.get("QUANTUM_ADMIN_KEY", "")
 GATED = SHARED and bool(SESSION_KEY)
 REG_FILE = os.path.join(RUNS_DIR, ".registrations.jsonl")   # one JSON line per sign-up, in the runs volume
+MSG_FILE = os.path.join(RUNS_DIR, ".messages.jsonl")        # one JSON line per contact-form message
 CANONICAL_HOST = os.environ.get("QUANTUM_HOST", "")          # e.g. qtumdynamics.com
 REDIRECT_HOSTS = {h.strip().lower() for h in os.environ.get("QUANTUM_REDIRECT_HOSTS", "").split(",") if h.strip()}
 COOKIE = "qd_session"
@@ -569,6 +571,11 @@ class Handler(BaseHTTPRequestHandler):
             s = self.session()
             self.send_json({"signed_in": bool(s), "name": s["n"] if s else None,
                             "admin": bool(s and s.get("a")), "gated": GATED})
+        elif u.path == "/api/admin/messages":
+            s = self.session()
+            if not (s and s.get("a")):
+                return self.send_json({"error": "admins only"}, 403)
+            self.send_json(read_jsonl(MSG_FILE))
         elif u.path == "/api/admin/registrations":
             s = self.session()
             if not (s and s.get("a")):
@@ -699,6 +706,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": "Could not read the form."}, 400)
         if u.path == "/api/register":
             return self.register(form)
+        if u.path == "/api/contact":
+            return self.contact(form)
         if u.path == "/api/admin/login":
             if not ADMIN_KEY or not rate_ok("admin:" + self.client_ip(), 10):
                 return self.send_json({"error": "Not available right now."}, 429)
@@ -736,6 +745,33 @@ class Handler(BaseHTTPRequestHandler):
         print(f"sign-up {rec['time']} {rec['id']}", flush=True)
         self.send_json({"ok": True, "name": rec["name"]},
                        headers=[("Set-Cookie", self.cookie_header({"id": rec["id"], "n": rec["name"][:40], "a": 0}))])
+
+    def contact(self, form):
+        f = {k: str(form.get(k, "")).strip() for k in ("name", "email", "organisation", "message", "website")}
+        if f["website"]:                                   # hidden field: only bots fill it in
+            return self.send_json({"ok": True})
+        errors = []
+        if not 1 <= len(f["name"]) <= 100:
+            errors.append("Please give your name.")
+        if len(f["email"]) > 254 or not EMAIL_RE.fullmatch(f["email"]):
+            errors.append("Please give a valid email address.")
+        if not f["message"]:
+            errors.append("Please write a message.")
+        if len(f["organisation"]) > 150 or len(f["message"]) > 5000:
+            errors.append("One of the answers is too long.")
+        if errors:
+            return self.send_json({"error": " ".join(errors)}, 400)
+        if not rate_ok("contact:" + self.client_ip(), 5):
+            return self.send_json({"error": "Too many messages from this address. Please try again in an hour."}, 429)
+        rec = {"id": secrets.token_hex(8), "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+               "name": f["name"], "email": f["email"].lower(), "organisation": f["organisation"], "message": f["message"]}
+        with RATE_LOCK:
+            if os.path.exists(MSG_FILE) and os.path.getsize(MSG_FILE) > 20_000_000:
+                return self.send_json({"error": "The form is paused. Please email hello@qtumdynamics.com."}, 503)
+            with open(MSG_FILE, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(rec) + "\n")
+        print(f"contact message {rec['time']} {rec['id']}", flush=True)
+        self.send_json({"ok": True})
 
     def do_DELETE(self):
         u = urlparse(self.path)
@@ -906,10 +942,15 @@ REG_FIELDS = ["time", "name", "email", "organisation", "role", "interest", "id"]
 
 def read_registrations():
     """All sign-ups, newest first."""
-    if not os.path.exists(REG_FILE):
+    return read_jsonl(REG_FILE)
+
+
+def read_jsonl(path):
+    """One record per line, newest first."""
+    if not os.path.exists(path):
         return []
     out = []
-    with open(REG_FILE, encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             try:
                 out.append(json.loads(line))
