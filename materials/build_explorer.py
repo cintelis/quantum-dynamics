@@ -4,8 +4,7 @@ Steps 2-4 of the perovskite composition explorer (run in WSL: needs RDKit + SciP
     ~/cudaq-env/bin/python materials/build_explorer.py
 
 Inputs
-  data/catalogue.json                      purchasable salts, Greatcell (from fetch_catalogue.py)
-  data/catalogue_ossila.json               Ossila's perovskite precursors (from fetch_ossila.py), if present
+  data/catalogue.json                      purchasable salts (from fetch_catalogue.py)
   Cations sold by more than one supplier are merged by structure, so each appears once with every product.
   data/perovskite_db/Perovskite_database_content_all_data.csv
         The Perovskite Database Project, Jacobsson et al., Nature Energy 7, 107 (2022),
@@ -42,8 +41,7 @@ DB_CSV = os.path.join(DATA, "perovskite_db", "Perovskite_database_content_all_da
 CACHE = os.path.join(DATA, "pubchem_cache.json")
 # (file, supplier name, product page base URL or None, currency). Files that do not exist are skipped.
 CATALOGUES = [
-    ("catalogue.json", "Greatcell Solar Materials", None, None),
-    ("catalogue_ossila.json", "Ossila", None, None),
+    ("catalogue.json", "Supplier catalogue", None, None),
 ]
 
 ANIONS = ["iodide", "bromide", "chloride", "thiocyanate", "tetrafluoroborate", "trifluoroacetate", "mesylate",
