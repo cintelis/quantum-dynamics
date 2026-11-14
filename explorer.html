@@ -131,6 +131,10 @@ tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
 .detail dd { margin: 0; }
 .detail ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-secondary); font-size: 13px; }
 ul.buy li { margin-bottom: 6px; }
+.buy-h { font-size: 12px; font-weight: 700; color: var(--text-primary); margin: 10px 0 2px; }
+.buy-note { font-size: 12px; margin-bottom: 6px; }
+ul.buy li.need::marker { color: var(--brand); }
+ul.buy li.need a { font-weight: 700; }
 ul.buy .chip { font-size: 10.5px; }
 .detail .smiles { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--text-secondary); }
 .btn-primary { display: inline-block; background: var(--brand); color: #000; text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 2px; margin-top: 8px; }
@@ -410,20 +414,36 @@ function showDetail(c, s, cat) {
 
   if (cat && cat.products) {
     d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Where to buy"));
-    const ul = el("ul", { class: "buy" });
     const money = p => p.price ? ` · from ${p.currency === "GBP" ? "£" : p.currency === "EUR" ? "€" : p.currency === "USD" ? "US$" : "$"}${(+p.price).toFixed(2)}` : "";
-    for (const p of [...cat.products].sort((a, b) => (a.supplier || "").localeCompare(b.supplier || "") || a.anion.localeCompare(b.anion))) {
-      const li = el("li");
+    const row = (p, cls) => {
+      const li = el("li", cls ? { class: cls } : {});
       if (p.supplier) li.append(el("span", { class: "chip" }, p.supplier), document.createTextNode(" "));
       const label = `${cat.name} ${p.anion}`;
-      if (p.url) { const a = el("a", { href: p.url, target: "_blank", rel: "noopener" }, label + " ↗"); li.append(a); }
+      if (p.url) li.append(el("a", { href: p.url, target: "_blank", rel: "noopener" }, label + " ↗"));
       else li.append(document.createTextNode(label));
       li.append(document.createTextNode(` · SKU ${p.sku}` + (p.cas ? ` · CAS ${p.cas}` : "") + money(p) +
         (p.packs && p.packs.length ? ` (${p.packs.join(", ")})` : "") + (p.inStock ? " · in stock" : " · out of stock")));
-      ul.append(li);
-    }
-    if (c.kind === "quasi-2D") ul.append(el("li", { class: "muted" }, `plus ${c.A === "MA" ? "methylammonium" : "formamidinium"} ${c.X === "I" ? "iodide" : "bromide"} and lead ${c.X === "I" ? "iodide" : "bromide"} (lead salts not listed here)`));
-    d.append(ul);
+      return li;
+    };
+    // the recipe's halide decides which salt is needed; other halides change the recipe; the rest are additives
+    const HAL = { I: "iodide", Br: "bromide", Cl: "chloride" }, want = HAL[c.X];
+    const sorted = [...cat.products].sort((a, b) => (a.supplier || "").localeCompare(b.supplier || "") || a.anion.localeCompare(b.anion));
+    const need = sorted.filter(p => p.anion === want);
+    const swap = sorted.filter(p => p.anion !== want && (p.anion === "iodide" || p.anion === "bromide"));
+    const extra = sorted.filter(p => !need.includes(p) && !swap.includes(p));
+    const group = (title, note, list, cls) => {
+      if (!list.length) return;
+      d.append(el("div", { class: "buy-h" }, title), el("div", { class: "muted buy-note" }, note));
+      const ul = el("ul", { class: "buy" }); list.forEach(p => ul.append(row(p, cls))); d.append(ul);
+    };
+    const host = c.kind === "3D" ? ((c.formula.match(/^(MA|FA)/) || [])[1] || "FA") : c.A;
+    const hostName = { MA: "methylammonium", FA: "formamidinium" }[host];
+    const others = [hostName && (c.kind === "3D" || c.n !== 1) ? `${hostName} ${want}` : null, `lead ${want}`].filter(Boolean).join(" and ");
+    if (need.length) group("Needed for this recipe", `${c.formula} is a${want === "iodide" ? "n" : ""} ${want} perovskite, so ${cat.name} goes in as its ${want} salt. ` +
+      `You also need ${others} (not listed here).`, need, "need");
+    else d.append(el("div", { class: "muted buy-note" }, `No ${cat.name} ${want} is listed by the supplier. The recipe also needs ${others}.`));
+    group("Other halide · changes the recipe", `Using it swaps in ${want === "iodide" ? "bromide, which raises" : "iodide, which lowers"} the band gap.`, swap);
+    group("Optional additives", "Small amounts help crystals grow or heal defects at grain surfaces. They aren't part of the formula.", extra);
   }
   if (c.funnel) {
     d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Energy funnel estimate"));
