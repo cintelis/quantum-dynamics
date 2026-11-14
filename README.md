@@ -9,6 +9,8 @@ Live at **https://qtumdynamics.com**: open to browse, free sign-up to run simula
 - **Live dynamics dashboard** (`/dashboard`): quantum-dynamics models on NVIDIA CUDA-Q, streamed step by step
   (`sim.py`, `funnel.py`, `transmon.py`, `dashboard.py`).
 - **Spin chain at scale** (`/chain`): a 100-spin MPS run and an IBM hardware noise preview (`ibm/`).
+- **Delivery routing** (`/routing`): QAOA splits 6-12 delivery stops between two vans (one qubit per stop), with the
+  angles tuned live and the tuned circuit sampled on CUDA-Q, checked against every possible plan (`routing.py`).
 
 Licensed under Apache 2.0 (see `LICENSE` and `NOTICE`). Results are model predictions, not lab measurements.
 
@@ -146,7 +148,7 @@ The page also shows the step-1 IBM-noise preview. Aer's MPS memory pre-check ass
 
 ## Page menu
 Every page has a nine-dot menu button at the right of the top bar (`nav.js`, shared): tiles for the four pages
-(dashboard, materials explorer, new molecules, spin chain at scale) and shortcuts to each dashboard model.
+(dashboard, materials explorer, new molecules, spin chain at scale, delivery routing) and shortcuts to each dashboard model.
 Keyboard: G opens it, 1–4 jump to a page, arrow keys move, Esc closes. To add a page, add it to `PAGES` in `nav.js`.
 
 ## Materials explorer (http://localhost:8765/explorer)

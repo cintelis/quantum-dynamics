@@ -8,6 +8,9 @@ Endpoints
   GET /api/schema       models, their parameters, available backends
   GET /api/run?...      start a run; streams Server-Sent Events: meta, step, done, error
   GET /api/runs         saved runs (newest first)
+  GET /api/routing/problem?stops=&seed=        delivery-routing map, every plan's cost, the exact best plan
+  GET /api/routing/run?stops=&layers=&seed=    QAOA on CUDA-Q; streams Server-Sent Events: meta, step, done, error
+  GET /api/routing/example                     a saved run, shown before anyone runs their own
   GET /api/runs/<id>    one saved run, full data
   DELETE /api/runs/<id> move a run to the trash (its owner or an admin)
 
@@ -35,6 +38,7 @@ from urllib.parse import parse_qs, quote, urlparse
 import numpy as np
 
 import explorer_api
+import routing
 import sim
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -63,7 +67,7 @@ REDIRECT_HOSTS = {h.strip().lower() for h in os.environ.get("QUANTUM_REDIRECT_HO
 COOKIE = "qd_session"
 # Everything can be looked at without signing up; these need a sign-up (they use the server or reveal designs).
 # Deleting a run (DELETE) always needs one too. /api/molecules and /api/vibrations are trimmed for visitors.
-MEMBERS_ONLY = {"/api/run"}
+MEMBERS_ONLY = {"/api/run", "/api/routing/run"}
 EMAIL_RE = re.compile(r"[^@\s<>\"',;]{1,64}@[A-Za-z0-9.\-]{1,190}\.[A-Za-z]{2,24}")
 RATE = {}                       # ip -> recent attempt times (sign-ups and admin logins)
 RATE_LOCK = threading.Lock()
@@ -109,7 +113,7 @@ def rate_ok(ip, limit, window=3600):
 STATIC = {"/og.png": "image/png", "/favicon.ico": "image/x-icon", "/favicon.svg": "image/svg+xml",
           "/apple-touch-icon.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/site.webmanifest": "application/manifest+json"}
-SITEMAP_PAGES = ["/", "/explorer", "/molecules", "/dashboard", "/chain"]
+SITEMAP_PAGES = ["/", "/explorer", "/molecules", "/dashboard", "/chain", "/routing"]
 
 VISIT_COOKIE = "qd_visit"
 VISIT_TTL = 6 * 3600
@@ -608,6 +612,21 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"error": f"{type(e).__name__}: {e}"}, 400)
         elif u.path in ("/explorer", "/explorer.html"):
             self.send_file(os.path.join(HERE, "explorer.html"), "text/html; charset=utf-8")
+        elif u.path in ("/routing", "/routing.html"):
+            self.send_file(os.path.join(HERE, "routing.html"), "text/html; charset=utf-8")
+        elif u.path == "/api/routing/problem":
+            try:
+                stops, _, seed = routing_args(parse_qs(u.query))
+                self.send_json(routing.public(routing.problem(stops, seed)))
+            except ValueError as e:
+                self.send_json({"error": str(e)}, 400)
+        elif u.path == "/api/routing/example":
+            p = os.path.join(HERE, "data", "routing_example.json")
+            if not os.path.exists(p):
+                return self.send_json({"error": "data/routing_example.json missing: run python routing.py --save"}, 404)
+            self.send_file(p, "application/json")
+        elif u.path == "/api/routing/run":
+            self.handle_routing(parse_qs(u.query))
         elif u.path in ("/chain", "/chain.html"):
             self.send_file(os.path.join(HERE, "chain.html"), "text/html; charset=utf-8")
         elif u.path in ("/api/chain100", "/api/ibm-step1"):
@@ -808,6 +827,59 @@ class Handler(BaseHTTPRequestHandler):
                 record.setdefault("elapsed", record["steps"][-1]["elapsed"])
                 with open(os.path.join(RUNS_DIR, record["id"] + ".json"), "w") as f:
                     json.dump(record, f)
+
+
+    def handle_routing(self, q):
+        """QAOA delivery routing: tune the angles (streamed), sample the tuned circuit on CUDA-Q, report."""
+        try:
+            stops, layers, seed = routing_args(q)
+        except ValueError as e:
+            return self.send_json({"error": str(e)}, 400)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+        if not RUN_LOCK.acquire(blocking=False):
+            return self.sse("error", {"message": "Another run is in progress on the server. Try again in a moment."})
+        try:
+            self.sse("meta", {"stops": stops, "layers": layers, "seed": seed})
+            pace = 0.008                       # stream the tuning at a watchable speed (a few seconds)
+            last = [0.0]
+
+            def step(d):
+                self.sse("step", d)            # raises if the browser hung up -> run stops
+                now = time.perf_counter()
+                if now - last[0] < pace:
+                    time.sleep(pace - (now - last[0]))
+                last[0] = time.perf_counter()
+
+            def sampling():
+                self.sse("sampling", {"message": "Running the tuned circuit on CUDA-Q"})
+
+            out = routing.run(stops, layers, seed, on_step=step, before_sample=sampling)
+            self.sse("done", out)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:
+            try:
+                self.sse("error", {"message": f"{type(e).__name__}: {e}"})
+            except OSError:
+                pass
+        finally:
+            RUN_LOCK.release()
+
+
+def routing_args(q):
+    def num(key, default):
+        lo, hi = routing.LIMITS[key]
+        try:
+            v = int(q.get(key, [default])[0])
+        except (TypeError, ValueError):
+            raise ValueError(f"{key} must be a whole number")
+        return min(max(v, lo), hi)
+    return num("stops", 8), num("layers", 2), num("seed", 7)
 
 
 # What visitors see of the generated molecules: scores and summaries, not the structures (name, SMILES,

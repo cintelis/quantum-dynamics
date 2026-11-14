@@ -8,8 +8,8 @@ RUN pip install cudaq==0.16.0 numpy==2.5.4 scipy==1.18.1 matplotlib==3.11.2
 
 RUN useradd --create-home --uid 10001 quantum
 WORKDIR /app
-COPY --chown=root:root dashboard.py explorer_api.py dashboard.html explorer.html molecules.html chain.html landing.html admin.html nav.js vibchart.js \
-     sim.py funnel.py transmon.py seed_runs.py ./
+COPY --chown=root:root dashboard.py explorer_api.py dashboard.html explorer.html molecules.html chain.html landing.html admin.html nav.js vibchart.js routing.html \
+     sim.py funnel.py transmon.py routing.py seed_runs.py ./
 # all of data/: what the pages read, plus the raw perovskite database, catalogue and PubChem caches they were built from
 COPY --chown=root:root data/ data/
 COPY --chown=root:root static/ static/

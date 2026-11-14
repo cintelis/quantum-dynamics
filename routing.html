@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delivery routing with QAOA on CUDA-Q · Quantum Dynamics</title>
+<meta name="description" content="Split delivery stops between two vans with QAOA, a quantum optimisation algorithm, on NVIDIA CUDA-Q. Watch the angles tune live and compare with the exact best plan.">
+<link rel="canonical" href="https://qtumdynamics.com/routing">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Quantum Dynamics">
+<meta property="og:title" content="Delivery routing with QAOA on CUDA-Q · Quantum Dynamics">
+<meta property="og:description" content="Split delivery stops between two vans with QAOA, a quantum optimisation algorithm, on NVIDIA CUDA-Q. Watch the angles tune live and compare with the exact best plan.">
+<meta property="og:url" content="https://qtumdynamics.com/routing">
+<meta property="og:image" content="https://qtumdynamics.com/og.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="Quantum Dynamics: simulate perovskite solar materials before you make them">
+<meta property="og:locale" content="en_AU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Delivery routing with QAOA on CUDA-Q · Quantum Dynamics">
+<meta name="twitter:description" content="Split delivery stops between two vans with QAOA, a quantum optimisation algorithm, on NVIDIA CUDA-Q. Watch the angles tune live and compare with the exact best plan.">
+<meta name="twitter:image" content="https://qtumdynamics.com/og.png?v=2">
+<style>
+.viz-root {
+  color-scheme: dark;
+  --page: #000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626; --grid: #242424;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --brand: #76b900; --brand-hover: #8ccf14;
+  /* series: categorical order validated on #141414 (green, blue, orange, violet) */
+  --s1: #6aa800; --s2: #3987e5; --s3: #d95926; --s4: #9085e9;
+  --vanA: var(--s2); --vanB: var(--s3);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+.viz-root { background: var(--page); color: var(--text-primary); min-height: 100vh; }
+.topline { height: 3px; background: var(--brand); }
+.bar-top { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #000; position: sticky; top: 0; z-index: 10; }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; }
+.tag { color: var(--text-muted); font-size: 12px; border-left: 1px solid var(--line); padding-left: 14px; }
+.spacer { flex: 1; }
+.navlink { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border: 1px solid transparent; }
+.navlink:hover { color: var(--brand); border-color: var(--line); }
+main { padding: 24px 28px 56px; max-width: 1700px; margin: 0 auto; }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 6px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0; font-weight: 700; }
+h1 b { color: var(--brand); }
+.sub { color: var(--text-secondary); margin: 6px 0 16px; max-width: 1100px; }
+.card { background: var(--surface-1); border: 1px solid var(--line); border-radius: 2px; padding: 16px 18px; margin-bottom: 16px; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+.sec::before { content: ""; width: 3px; height: 12px; background: var(--brand); flex: none; }
+.lead { color: var(--text-secondary); margin: 0 0 10px; max-width: 1100px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
+.tile { background: var(--surface-1); padding: 14px 18px; }
+.tile .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; }
+.tile .v { font-size: 26px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile .h { font-size: 12px; color: var(--text-muted); }
+.grid2 { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .grid2 { grid-template-columns: 1fr; } }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); margin: 6px 0 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.legend i.dash { background: repeating-linear-gradient(90deg, var(--text-muted) 0 4px, transparent 4px 7px) !important; height: 2px; }
+.legend i.dot { width: 10px; height: 10px; border-radius: 50%; }
+.legend i.sq { width: 10px; height: 10px; border-radius: 1px; }
+svg.chart { width: 100%; display: block; overflow: visible; touch-action: none; }
+svg.chart text { fill: var(--text-muted); font-size: 11px; }
+svg.chart text.dl { fill: var(--text-primary); font-size: 11px; }
+svg.map { width: 100%; max-height: 470px; display: block; background: #0d0d0d; border: 1px solid var(--line); border-radius: 2px; }
+svg.map text { font-size: .32px; font-weight: 700; }
+.controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--text-muted); }
+button, select, input { font: inherit; color: inherit; }
+button { border: 1px solid #3a3a3a; background: transparent; border-radius: 2px; padding: 8px 16px; cursor: pointer; font-weight: 600; transition: border-color .12s, background .12s; }
+button:hover:not(:disabled) { border-color: var(--brand); }
+button.primary { background: var(--brand); color: #000; border-color: var(--brand); min-width: 96px; }
+button.primary:hover:not(:disabled) { background: var(--brand-hover); border-color: var(--brand-hover); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+select, input[type=number] { background: var(--surface-2); border: 1px solid #333; border-radius: 2px; padding: 7px 9px; }
+input[type=number] { width: 90px; font-variant-numeric: tabular-nums; }
+.status { color: var(--text-secondary); font-size: 13px; min-height: 20px; margin-top: 10px; }
+.status b { color: var(--brand); }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border: 1px solid #3a3a3a; padding: 2px 8px; color: var(--text-secondary); margin-left: 8px; vertical-align: 2px; }
+.badge.ok { border-color: var(--brand); color: var(--brand); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #222; }
+th { color: var(--text-muted); font-weight: 600; font-size: 12px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.plan { font-family: ui-monospace, Consolas, monospace; letter-spacing: .08em; font-size: 13px; }
+.plan .a { color: var(--vanA); } .plan .b { color: var(--vanB); }
+tr.best td { background: rgba(118,185,0,.07); }
+.bar { height: 6px; background: var(--s1); border-radius: 0 2px 2px 0; min-width: 2px; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.steps div { background: var(--surface-1); padding: 14px 16px; }
+.steps b { display: block; color: var(--brand); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+.steps p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+.tip { position: fixed; pointer-events: none; background: #0a0a0a; border: 1px solid #333; padding: 7px 10px; font-size: 12px; display: none; z-index: 50; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+.tip .t { color: var(--text-muted); margin-bottom: 3px; }
+.muted { color: var(--text-muted); }
+.err { color: #ff9a9a; }
+.foot { color: var(--text-muted); font-size: 12px; margin-top: 8px; max-width: 1200px; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <div class="topline"></div>
+  <div class="bar-top">
+    <div class="mark" aria-hidden="true"></div>
+    <div class="brand">Quantum Dynamics</div>
+    <div class="tag">Delivery routing · QAOA on CUDA-Q</div>
+    <div class="spacer"></div>
+    <a class="navlink" href="/dashboard">Dynamics dashboard</a>
+    <a class="navlink" href="/explorer">Materials explorer</a>
+    <a class="navlink" href="/chain">Spin chain</a>
+  </div>
+  <main>
+    <div class="eyebrow">Optimisation · QAOA</div>
+    <h1>Which van takes which stop? <b>Let a quantum optimiser choose.</b></h1>
+    <p class="sub">Two vans, one depot each, and a set of delivery stops. Each stop becomes a qubit: 0 for van A, 1 for van B.
+      QAOA, a quantum optimisation algorithm, tunes a circuit so that cheap plans come up more often when it is measured.
+      Because the problem is small, every possible plan is also checked, so you can see exactly how close it gets.</p>
+
+    <div class="card">
+      <div class="controls">
+        <div class="field"><label for="stops">Stops (qubits)</label>
+          <select id="stops"><option>6</option><option>7</option><option selected>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
+        <div class="field"><label for="layers">QAOA layers</label>
+          <select id="layers"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+        <div class="field"><label for="seed">Map number</label><input type="number" id="seed" min="0" max="9999" value="7"></div>
+        <button id="shuffle" type="button">New map</button>
+        <button id="run" class="primary" type="button">Run on CUDA-Q</button>
+      </div>
+      <div class="status" id="status" aria-live="polite"></div>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="sec" id="mapTitle">The map</div>
+        <div class="legend">
+          <span><i class="sq" style="background:var(--vanA)"></i>Van A (qubit 0)</span>
+          <span><i class="sq" style="background:var(--vanB)"></i>Van B (qubit 1)</span>
+          <span><i class="dot" style="background:#555"></i>Stop not assigned yet</span>
+        </div>
+        <svg class="map" id="map" viewBox="0 0 10 10" role="img" aria-label="Map of the delivery stops and each van's route"></svg>
+        <p class="foot" id="mapNote"></p>
+      </div>
+      <div class="card">
+        <div class="sec">Tuning the circuit</div>
+        <p class="lead" id="tuneLead">Each point is one try of the circuit's angles: the average cost of the plans it would produce. The optimiser pushes it down.</p>
+        <div class="legend">
+          <span><i style="background:var(--s1)"></i>Average plan cost, this circuit</span>
+          <span><i class="dash"></i>Random plan (average) and exact best plan</span>
+        </div>
+        <svg class="chart" id="tune" height="400" role="img" aria-label="Average plan cost at each step of tuning"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sec">What the quantum circuit produced</div>
+      <p class="lead" id="sampLead">The tuned circuit is measured 2,000 times on CUDA-Q. Each measurement is one complete plan; you keep the cheapest.</p>
+      <table id="samples"></table>
+    </div>
+
+    <div class="card">
+      <div class="sec">How it works</div>
+      <div class="steps">
+        <div><b>1 · Plans as qubits</b><p>One qubit per stop. 8 stops give 2<sup>8</sup> = 256 possible plans, 12 stops give 4,096. A real fleet has far more.</p></div>
+        <div><b>2 · A cost formula</b><p>Distance from each stop to its van's depot, plus distance between stops that share a van, plus a penalty when one van gets more stops than the other.</p></div>
+        <div><b>3 · QAOA</b><p>Start with every plan equally likely. Each layer adds phases from the cost formula, then mixes plans together. More layers can do better.</p></div>
+        <div><b>4 · Tune, then measure</b><p>A classical optimiser picks the layer angles. The tuned circuit then runs on CUDA-Q, and each measurement gives a plan.</p></div>
+      </div>
+      <p class="foot">The angles are tuned on an exact NumPy model of the same circuit, because each CUDA-Q call from Python takes 0.1 to 4 seconds on this
+        CPU server and tuning needs hundreds of them. The tuned circuit then runs on CUDA-Q's simulator, and the page shows both averages so you can check they agree.
+        Each van's driving order is worked out classically once the stops are split. At these sizes a laptop checks every plan instantly, and classical solvers
+        still beat QAOA on real routing problems. This demo shows how the method works, not a speed-up.</p>
+    </div>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const S = (tag, a = {}, text) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; return e; };
+const H = (tag, a = {}, text) => { const e = document.createElement(tag); for (const k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; return e; };
+const km = v => v.toFixed(1) + " km";
+const VAN = { A: "var(--vanA)", B: "var(--vanB)" };
+
+let P = null;        // the problem (map, exact best)
+let R = null;        // a finished run, or null
+let hist = [];       // live tuning curve: {i, layer, expected}
+let es = null;
+
+// ---------------------------------------------------------------- tooltip
+const tip = $("tip");
+function showTip(ev, title, rows) {
+  tip.replaceChildren(H("div", { class: "t" }, title), ...rows.map(r => H("div", {}, r)));
+  tip.style.display = "block";
+  const x = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.min(ev.clientY + 14, innerHeight - tip.offsetHeight - 8);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+const hideTip = () => { tip.style.display = "none"; };
+
+// ---------------------------------------------------------------- map
+function drawMap(plan) {
+  const svg = $("map"); svg.replaceChildren();
+  const g = S("g", { stroke: "#1d1d1d", "stroke-width": ".02" });
+  for (let i = 1; i < 10; i++) { g.append(S("line", { x1: i, y1: 0, x2: i, y2: 10 }), S("line", { x1: 0, y1: i, x2: 10, y2: i })); }
+  svg.append(g);
+  if (!P) return;
+  const pts = P.points, dep = P.depots;
+  if (plan) {
+    for (const van of ["A", "B"]) {
+      const r = plan.routes[van]; if (!r.stops.length) continue;
+      const path = [dep[van], ...r.stops.map(i => pts[i]), dep[van]].map(p => p.join(",")).join(" ");
+      svg.append(S("polyline", { points: path, fill: "none", stroke: VAN[van], "stroke-width": ".06", "stroke-linejoin": "round", "stroke-linecap": "round", opacity: ".9" }));
+    }
+  }
+  for (const van of ["A", "B"]) {
+    const [x, y] = dep[van];
+    const r = S("rect", { x: x - .28, y: y - .28, width: .56, height: .56, rx: .05, fill: VAN[van], stroke: "#0d0d0d", "stroke-width": ".06" });
+    r.onpointermove = ev => showTip(ev, `Van ${van} depot`, plan ? [`Route ${km(plan.routes[van].km)} · ${plan.routes[van].stops.length} stops`] : ["Starts and ends here"]);
+    r.onpointerleave = hideTip;
+    svg.append(r, S("text", { x, y: y + .11, "text-anchor": "middle", fill: "#000" }, van));
+  }
+  pts.forEach((p, i) => {
+    const van = plan ? (plan.bits[i] === "0" ? "A" : "B") : null;
+    const c = S("circle", { cx: p[0], cy: p[1], r: .3, fill: van ? VAN[van] : "#555", stroke: "#0d0d0d", "stroke-width": ".06" });
+    const hit = S("circle", { cx: p[0], cy: p[1], r: .5, fill: "transparent" });
+    hit.onpointermove = ev => {
+      const dA = Math.hypot(p[0] - dep.A[0], p[1] - dep.A[1]), dB = Math.hypot(p[0] - dep.B[0], p[1] - dep.B[1]);
+      showTip(ev, `Stop ${i + 1} · qubit ${i}`, [van ? `Van ${van}` : "Not assigned yet", `${km(dA)} from depot A · ${km(dB)} from depot B`]);
+    };
+    hit.onpointerleave = hideTip;
+    svg.append(c, S("text", { x: p[0], y: p[1] + .11, "text-anchor": "middle", fill: "#000" }, String(i + 1)), hit);
+  });
+}
+
+// ---------------------------------------------------------------- tuning chart
+function drawTune() {
+  const svg = $("tune"); svg.replaceChildren();
+  const W = svg.clientWidth || 600, Ht = 400, m = { l: 58, r: 14, t: 22, b: 30 };
+  const pts = R ? R.history.map((v, i) => ({ i: i + 1, expected: v, layer: layerOf(i) })) : hist;
+  if (!P) return;
+  const ref = [P.mean_cost, P.best.cost];
+  const ys = pts.map(p => p.expected).concat(ref);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys), pad = (y1 - y0) * .08 || 1;
+  const lo = y0 - pad, hi = y1 + pad, n = Math.max(pts.length, 20);
+  const X = i => m.l + (i - 1) / Math.max(n - 1, 1) * (W - m.l - m.r), Y = v => m.t + (hi - v) / (hi - lo) * (Ht - m.t - m.b);
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4;
+    svg.append(S("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "#242424" }), S("text", { x: m.l - 6, y: Y(v) + 4, "text-anchor": "end" }, v.toFixed(0) + " km"));
+  }
+  svg.append(S("text", { x: m.l, y: Ht - 6 }, "tuning step →"), S("text", { x: W - m.r, y: Ht - 6, "text-anchor": "end" }, `${pts.length} steps`));
+  // layer boundaries
+  let prev = null;
+  for (const p of pts) {
+    if (p.layer !== prev) {
+      if (prev !== null) svg.append(S("line", { x1: X(p.i), x2: X(p.i), y1: m.t, y2: Ht - m.b, stroke: "#333", "stroke-dasharray": "2 3" }));
+      svg.append(S("text", { x: X(p.i) + 4, y: m.t - 8 }, `${p.layer} layer${p.layer > 1 ? "s" : ""}`));
+      prev = p.layer;
+    }
+  }
+  for (const [v, label] of [[P.mean_cost, `random plan ${km(P.mean_cost)}`], [P.best.cost, `exact best ${km(P.best.cost)}`]]) {
+    svg.append(S("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "#8a8a8a", "stroke-dasharray": "4 3" }),
+               S("text", { x: W - m.r, y: Y(v) - 5, "text-anchor": "end", class: "dl" }, label));
+  }
+  if (pts.length) {
+    svg.append(S("polyline", { points: pts.map(p => `${X(p.i)},${Y(p.expected)}`).join(" "), fill: "none", stroke: "var(--s1)", "stroke-width": 2, "stroke-linejoin": "round" }));
+    const last = pts[pts.length - 1];
+    svg.append(S("circle", { cx: X(last.i), cy: Y(last.expected), r: 4, fill: "var(--s1)", stroke: "#141414", "stroke-width": 2 }));
+  }
+  // crosshair + tooltip
+  const cross = S("line", { y1: m.t, y2: Ht - m.b, stroke: "#555", visibility: "hidden" });
+  const dot = S("circle", { r: 4, fill: "var(--s1)", stroke: "#141414", "stroke-width": 2, visibility: "hidden" });
+  const hit = S("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: Ht - m.t - m.b, fill: "transparent" });
+  hit.onpointermove = ev => {
+    if (!pts.length) return;
+    const r = svg.getBoundingClientRect(), fx = (ev.clientX - r.left - m.l) / (W - m.l - m.r);
+    const p = pts[Math.max(0, Math.min(pts.length - 1, Math.round(fx * (n - 1))))];
+    if (!p) return;
+    cross.setAttribute("x1", X(p.i)); cross.setAttribute("x2", X(p.i)); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", X(p.i)); dot.setAttribute("cy", Y(p.expected)); dot.setAttribute("visibility", "visible");
+    showTip(ev, `Step ${p.i} · ${p.layer} layer${p.layer > 1 ? "s" : ""}`, [`Average plan ${km(p.expected)}`]);
+  };
+  hit.onpointerleave = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); hideTip(); };
+  svg.append(cross, dot, hit);
+}
+// which layer count a saved run's step belonged to (the server streams it; saved runs store only the values)
+function layerOf(i) { return R && R.layer_of ? R.layer_of[i] : 1; }
+
+// ---------------------------------------------------------------- tiles + table
+function tiles() {
+  const t = [];
+  t.push(["Possible plans", P.plans.toLocaleString(), `2^${P.stops}: one qubit per stop`]);
+  if (R) {
+    t.push(["Circuit", `${R.gates.toLocaleString()} gates`, `${R.qubits} qubits · ${R.layers} layer${R.layers > 1 ? "s" : ""}`]);
+    const same = R.found.cost <= P.best.cost + 1e-6;
+    t.push(["Best plan sampled", km(R.found.cost), same ? `matches the exact best plan` : `exact best is ${km(P.best.cost)} (rank ${R.found.rank} of ${P.plans.toLocaleString()})`]);
+    t.push(["Average plan", km(R.expected_samples), `random guessing averages ${km(P.mean_cost)}`]);
+    const x = R.p_best / R.p_random;
+    t.push(["Best plan came up", `${(R.p_best * 100).toFixed(1)}%`, x >= 1.05 ? `of samples · ${x.toFixed(1)}× random guessing` : "of samples · about as often as random"]);
+    t.push(["Time", `${(R.tune_seconds + R.quantum_seconds).toFixed(1)} s`, `${R.evaluations} tuning steps · CUDA-Q ${R.target}`]);
+  } else {
+    t.push(["Exact best plan", km(P.best.cost), "found by checking every plan"]);
+    t.push(["Random plan", km(P.mean_cost), "average over all plans"]);
+    t.push(["Cost terms", `${P.terms.single + P.terms.pairs}`, `${P.terms.single} single-qubit + ${P.terms.pairs} pairs`]);
+  }
+  $("tiles").replaceChildren(...t.map(([k, v, h]) => { const d = H("div", { class: "tile" }); d.append(H("div", { class: "k" }, k), H("div", { class: "v" }, v), H("div", { class: "h" }, h)); return d; }));
+}
+
+function planCell(bits) {
+  const s = H("span", { class: "plan" });
+  for (const b of bits) s.append(H("span", { class: b === "0" ? "a" : "b" }, b === "0" ? "A" : "B"));
+  return s;
+}
+
+function table() {
+  const t = $("samples"); t.replaceChildren();
+  if (!R) { t.append(H("tr", {}, "")); $("sampLead").textContent = "Run the optimiser to see the plans the quantum circuit produces."; return; }
+  $("sampLead").textContent = `The tuned circuit was measured ${R.shots.toLocaleString()} times on CUDA-Q (${R.target}), giving ${R.distinct.toLocaleString()} different plans. ` +
+    `These are the cheapest of them; you keep the first. Plans list stops 1 to ${R.qubits} in order, A or B being the van. ` +
+    (R.most_common ? `The single most common plan came up ${(R.most_common.p * 100).toFixed(1)}% of the time (${km(R.most_common.cost)}, rank ${R.most_common.rank}): ` +
+      "shallow QAOA spreads its odds over many plans, tilted towards cheap ones." : "");
+  const hr = H("tr");
+  for (const [h, c] of [["Plan (stop 1 → " + R.qubits + ")", ""], ["Cost", "num"], ["Rank of " + P.plans.toLocaleString(), "num"], ["Share of samples", "num"], ["", ""]]) hr.append(H("th", c ? { class: c } : {}, h));
+  t.append(hr);
+  const maxp = Math.max(...R.top.map(s => s.p));
+  for (const s of R.top) {
+    const tr = H("tr", s.rank === 1 ? { class: "best" } : {});
+    const pc = H("td"); pc.append(planCell(s.bits)); if (s.rank === 1) pc.append(H("span", { class: "badge ok" }, "exact best"));
+    const bar = H("td", { style: "width:22%" }); const b = H("div", { class: "bar" }); b.style.width = (s.p / maxp * 100) + "%"; bar.append(b);
+    tr.append(pc, H("td", { class: "num" }, km(s.cost)), H("td", { class: "num" }, String(s.rank)), H("td", { class: "num" }, (s.p * 100).toFixed(1) + "%"), bar);
+    t.append(tr);
+  }
+  if (!R.top.some(s => s.bits === R.found.bits)) {
+    const tr = H("tr", { class: R.found.rank === 1 ? "best" : "" });
+    const pc = H("td"); pc.append(planCell(R.found.bits), H("span", { class: "badge" + (R.found.rank === 1 ? " ok" : "") }, R.found.rank === 1 ? "exact best · rarer" : "cheapest sampled"));
+    tr.append(pc, H("td", { class: "num" }, km(R.found.cost)), H("td", { class: "num" }, String(R.found.rank)), H("td", { class: "num" }, (R.found.count / R.shots * 100).toFixed(2) + "%"), H("td"));
+    t.append(tr);
+  }
+}
+
+function render() {
+  if (!P) return;
+  tiles();
+  const plan = R ? R.found : null;
+  drawMap(plan);
+  $("mapTitle").textContent = R ? "Best plan the circuit produced" : "The map";
+  $("mapNote").textContent = R
+    ? `Van A: ${R.found.routes.A.stops.length} stops, ${km(R.found.routes.A.km)} route. Van B: ${R.found.routes.B.stops.length} stops, ${km(R.found.routes.B.km)} route. ` +
+      (R.found.cost <= P.best.cost + 1e-6 ? "This is the exact best plan." : `The exact best plan costs ${km(P.best.cost)}.`) + " Hover a stop for its distances."
+    : `${P.stops} stops on a 10 × 10 km area. Plan cost counts distance to the depot, distance between stops sharing a van, and an uneven-load penalty.`;
+  drawTune();
+  table();
+}
+
+// ---------------------------------------------------------------- data
+const api = (path, params) => fetch(path + "?" + new URLSearchParams(params)).then(async r => {
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+});
+const params = () => ({ stops: $("stops").value, layers: $("layers").value, seed: $("seed").value });
+
+async function loadProblem() {
+  stop();
+  R = null; hist = [];
+  try { P = await api("/api/routing/problem", params()); $("status").textContent = "Press Run to let QAOA split the stops between the vans."; }
+  catch (e) { $("status").replaceChildren(H("span", { class: "err" }, e.message)); return; }
+  render();
+}
+
+function stop() { if (es) { es.close(); es = null; } $("run").textContent = "Run on CUDA-Q"; }
+
+function start() {
+  stop();
+  R = null; hist = [];
+  render();
+  $("run").textContent = "Stop";
+  $("status").textContent = "Tuning the circuit…";
+  const q = new URLSearchParams(params());
+  es = new EventSource("/api/routing/run?" + q);
+  let pending = false;
+  es.addEventListener("step", ev => {
+    const d = JSON.parse(ev.data); hist.push(d);
+    if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; drawTune(); }); }
+    $("status").replaceChildren(document.createTextNode(`Tuning: step ${d.i}, ${d.layer} layer${d.layer > 1 ? "s" : ""}, average plan `), H("b", {}, km(d.expected)));
+  });
+  es.addEventListener("sampling", () => { $("status").textContent = "Angles tuned. Running the circuit on CUDA-Q and measuring it 2,000 times…"; });
+  es.addEventListener("done", ev => {
+    const d = JSON.parse(ev.data);
+    d.layer_of = layersFromHistory(d);
+    R = d; stop(); render();
+    const same = R.found.cost <= P.best.cost + 1e-6;
+    $("status").replaceChildren(document.createTextNode(`Done in ${(R.tune_seconds + R.quantum_seconds).toFixed(1)} s. `),
+      H("b", {}, same ? "The circuit found the exact best plan." : `Best sampled plan is rank ${R.found.rank} of ${P.plans.toLocaleString()}.`),
+      document.createTextNode(` CUDA-Q's samples average ${km(R.expected_samples)}; the tuning model predicted ${km(R.expected_model)}.`));
+  });
+  es.addEventListener("error", ev => {
+    let msg = "The connection dropped.";
+    try { msg = JSON.parse(ev.data).message; } catch (_) { /* network error has no data */ }
+    stop(); $("status").replaceChildren(H("span", { class: "err" }, msg));
+  });
+}
+
+$("run").onclick = () => { if (es) { stop(); $("status").textContent = "Stopped."; return; } QD.need("run the optimiser", start); };
+$("shuffle").onclick = () => { $("seed").value = Math.floor(Math.random() * 10000); loadProblem(); };
+for (const id of ["stops", "seed"]) $(id).onchange = loadProblem;
+$("layers").onchange = () => { if (R) { R = null; hist = []; render(); } };
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+
+(async () => {
+  // first visit: show a saved example run, so the page has something to look at before anyone signs up
+  try {
+    const ex = await api("/api/routing/example", {});
+    $("stops").value = ex.stops; $("layers").value = ex.layers; $("seed").value = ex.seed;
+    P = ex; R = ex;
+    R.layer_of = layersFromHistory(ex);
+    render();
+    $("status").replaceChildren(H("b", {}, "Example run. "), document.createTextNode(`${ex.stops} stops, ${ex.layers} layers, map ${ex.seed}. Change the settings and press Run to try your own.`));
+  } catch (e) { loadProblem(); }
+})();
+// a saved run stores the evaluations per layer count only as a flat list; rebuild it from the tuning budget
+function layersFromHistory(r) { return r.layer_steps ? r.layer_steps.flatMap((k, i) => Array(k).fill(i + 1)) : r.history.map(() => r.layers); }
+</script>
+<script src="/nav.js"></script>
+</body>
+</html>

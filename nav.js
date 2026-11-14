@@ -111,13 +111,14 @@ window.QD = (() => {
 })();
 
 // Shared app-launcher ("grid") menu for every page: a nine-dot button in the top bar opens a panel of page tiles
-// and dashboard model shortcuts. Keyboard: G toggles, 1-4 jump to a page, arrows move, Esc closes.
+// and dashboard model shortcuts. Keyboard: G toggles, 1-5 jump to a page, arrows move, Esc closes.
 (() => {
   const PAGES = [
     { href: "/dashboard", name: "Dynamics dashboard", desc: "Run live quantum simulations (CUDA-Q)", icon: "wave" },
     { href: "/explorer", name: "Materials explorer", desc: "Rank purchasable perovskite recipes", icon: "layers" },
     { href: "/molecules", name: "New molecules", desc: "Design spacers for custom synthesis", icon: "hex" },
     { href: "/chain", name: "Spin chain at scale", desc: "100 spins and the IBM noise preview", icon: "chain" },
+    { href: "/routing", name: "Delivery routing", desc: "QAOA splits stops between two vans", icon: "route" },
   ];
   const MODELS = [
     { model: "funnel", name: "Energy funnel" }, { model: "transmon", name: "Transmon qubit" },
@@ -128,6 +129,7 @@ window.QD = (() => {
     wave: '<path d="M2 12h3l3-7 4 14 4-10 2 3h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
     layers: '<path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
     hex: '<path d="M12 2.5 20.5 7.3v9.4L12 21.5 3.5 16.7V7.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/>',
+    route: '<circle cx="4.5" cy="18" r="2.2" fill="currentColor"/><circle cx="19.5" cy="6" r="2.2" fill="currentColor"/><path d="M6.5 17.5c4-1 2-6 6-6.5s2.5-4 5-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 2.5"/>',
     chain: '<circle cx="3.5" cy="12" r="2" fill="currentColor"/><circle cx="9.2" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="14.8" cy="12" r="2" fill="currentColor"/><circle cx="20.5" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="2"/>',
   };
   const svg = (k, size = 22) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" ${k === "grid" ? 'fill="currentColor"' : ""}>${ICONS[k]}</svg>`;
@@ -256,7 +258,7 @@ window.QD = (() => {
       return;
     }
     if (e.key === "Escape") { e.preventDefault(); close(); return; }
-    if (/^[1-4]$/.test(e.key)) { e.preventDefault(); location.href = PAGES[+e.key - 1].href; return; }
+    if (/^[1-5]$/.test(e.key)) { e.preventDefault(); location.href = PAGES[+e.key - 1].href; return; }
     if (e.key === "g" || e.key === "G") { e.preventDefault(); close(); return; }
     const list = items(), i = list.indexOf(document.activeElement);
     const move = { ArrowRight: 1, ArrowDown: e.target.classList.contains("qnav-tile") ? 2 : 1, ArrowLeft: -1, ArrowUp: e.target.classList.contains("qnav-tile") ? -2 : -1 }[e.key];

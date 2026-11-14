@@ -27,7 +27,7 @@
 <meta name="twitter:title" content="Quantum Dynamics: perovskite solar materials simulation tools">
 <meta name="twitter:description" content="Free, open-source perovskite solar tools: rank purchasable compositions against 42,000 published devices, design new spacer molecules and simulate with CUDA-Q.">
 <meta name="twitter:image" content="https://qtumdynamics.com/og.png?v=2">
-<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Organization", "@id": "https://qtumdynamics.com/#org", "name": "Quantum Dynamics", "url": "https://qtumdynamics.com/", "logo": "https://qtumdynamics.com/icon-512.png", "sameAs": ["https://github.com/cintelis/quantum-dynamics"]}, {"@type": "WebSite", "@id": "https://qtumdynamics.com/#website", "name": "Quantum Dynamics", "url": "https://qtumdynamics.com/", "description": "Free, open-source perovskite solar tools: rank purchasable compositions against 42,000 published devices, design new spacer molecules and simulate with CUDA-Q.", "publisher": {"@id": "https://qtumdynamics.com/#org"}, "inLanguage": "en"}, {"@type": "WebApplication", "name": "Quantum Dynamics", "url": "https://qtumdynamics.com/", "applicationCategory": "ScientificApplication", "operatingSystem": "Any (web browser)", "browserRequirements": "Requires JavaScript", "description": "Screening tools for perovskite solar materials: a composition explorer, generated spacer molecules and live quantum-dynamics simulations built on NVIDIA CUDA-Q.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "isAccessibleForFree": true, "publisher": {"@id": "https://qtumdynamics.com/#org"}, "featureList": ["Perovskite composition explorer", "Generated spacer molecules for layered perovskites", "Live quantum dynamics (CUDA-Q)", "100-spin chain simulation"]}, {"@type": "SoftwareSourceCode", "name": "quantum-dynamics", "codeRepository": "https://github.com/cintelis/quantum-dynamics", "license": "https://www.apache.org/licenses/LICENSE-2.0", "programmingLanguage": ["Python", "JavaScript"], "author": {"@id": "https://qtumdynamics.com/#org"}}]}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Organization", "@id": "https://qtumdynamics.com/#org", "name": "Quantum Dynamics", "url": "https://qtumdynamics.com/", "logo": "https://qtumdynamics.com/icon-512.png", "sameAs": ["https://github.com/cintelis/quantum-dynamics"]}, {"@type": "WebSite", "@id": "https://qtumdynamics.com/#website", "name": "Quantum Dynamics", "url": "https://qtumdynamics.com/", "description": "Free, open-source perovskite solar tools: rank purchasable compositions against 42,000 published devices, design new spacer molecules and simulate with CUDA-Q.", "publisher": {"@id": "https://qtumdynamics.com/#org"}, "inLanguage": "en"}, {"@type": "WebApplication", "name": "Quantum Dynamics", "url": "https://qtumdynamics.com/", "applicationCategory": "ScientificApplication", "operatingSystem": "Any (web browser)", "browserRequirements": "Requires JavaScript", "description": "Screening tools for perovskite solar materials: a composition explorer, generated spacer molecules and live quantum-dynamics simulations built on NVIDIA CUDA-Q.", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "isAccessibleForFree": true, "publisher": {"@id": "https://qtumdynamics.com/#org"}, "featureList": ["Perovskite composition explorer", "Generated spacer molecules for layered perovskites", "Live quantum dynamics (CUDA-Q)", "100-spin chain simulation", "Delivery routing with QAOA"]}, {"@type": "SoftwareSourceCode", "name": "quantum-dynamics", "codeRepository": "https://github.com/cintelis/quantum-dynamics", "license": "https://www.apache.org/licenses/LICENSE-2.0", "programmingLanguage": ["Python", "JavaScript"], "author": {"@id": "https://qtumdynamics.com/#org"}}]}</script>
 <script>
   // old dashboard links (/#model=…, /#view=…) now live at /dashboard
   if (/(^|[#&])(model|view|compare)=/.test(location.hash)) location.replace("/dashboard" + location.hash);
@@ -248,6 +248,12 @@ footer { border-top: 1px solid var(--line); background: #070707; }
         <p>A 100-spin quantum simulation and a preview of how today's quantum hardware noise would change it.</p>
         <div class="fig">Ready for GPU scale-up</div>
       </a>
+      <a class="tile" href="/routing">
+        <span class="ic"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="4.5" cy="18" r="2.2" fill="currentColor"/><circle cx="19.5" cy="6" r="2.2" fill="currentColor"/><path d="M6.5 17.5c4-1 2-6 6-6.5s2.5-4 5-4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 2.5"/></svg></span>
+        <h3>Delivery routing</h3>
+        <p>Beyond materials: QAOA, a quantum optimisation algorithm, splits delivery stops between two vans. Compare it with the exact best plan.</p>
+        <div class="fig">Optimisation on CUDA-Q</div>
+      </a>
     </div>
   </section>
 
@@ -320,6 +326,7 @@ footer { border-top: 1px solid var(--line); background: #070707; }
       <a href="/molecules">New molecules</a>
       <a href="/dashboard">Dynamics dashboard</a>
       <a href="/chain">Spin chain at scale</a>
+      <a href="/routing">Delivery routing</a>
     </nav>
     <nav class="foot-col" aria-label="Project">
       <h4>Project</h4>
