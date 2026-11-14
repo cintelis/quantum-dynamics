@@ -1,4 +1,4 @@
-Qtum Dynamics
+Quantum Dynamics
 Copyright 2026 Cintelis
 
 This product includes software developed by Cintelis (https://qtumdynamics.com).
@@ -6,4 +6,7 @@ This product includes software developed by Cintelis (https://qtumdynamics.com).
 Data sources, not included in this repository:
 - The Perovskite Database Project (Jacobsson et al., Nature Energy 2022), CC BY 4.0.
 - PubChem (National Library of Medicine) for structure lookups.
-NVIDIA CUDA-Q is used as a dependency and is not part of this repository. Qtum Dynamics is not affiliated with NVIDIA.
+NVIDIA CUDA-Q is used as a dependency and is not part of this repository. Quantum Dynamics is not affiliated with NVIDIA.
+
+Bundled third-party code:
+- static/anime.esm.min.js: Anime.js v4.5.0, Copyright 2026 Julian Garnier, MIT licence (header kept in the file).
