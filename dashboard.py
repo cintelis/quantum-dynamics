@@ -112,8 +112,9 @@ def rate_ok(ip, limit, window=3600):
 # Static files for browsers, search engines and link previews (served with a day's cache).
 STATIC = {"/og.png": "image/png", "/favicon.ico": "image/x-icon", "/favicon.svg": "image/svg+xml",
           "/apple-touch-icon.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
-          "/site.webmanifest": "application/manifest+json"}
-SITEMAP_PAGES = ["/", "/explorer", "/molecules", "/dashboard", "/chain", "/routing"]
+          "/site.webmanifest": "application/manifest+json",
+          "/anime.esm.min.js": "text/javascript; charset=utf-8", "/circuit-anim.js": "text/javascript; charset=utf-8"}
+SITEMAP_PAGES = ["/", "/explorer", "/molecules", "/dashboard", "/chain", "/routing", "/privacy"]
 
 VISIT_COOKIE = "qd_visit"
 VISIT_TTL = 6 * 3600
@@ -612,6 +613,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"error": f"{type(e).__name__}: {e}"}, 400)
         elif u.path in ("/explorer", "/explorer.html"):
             self.send_file(os.path.join(HERE, "explorer.html"), "text/html; charset=utf-8")
+        elif u.path in ("/privacy", "/privacy.html"):
+            self.send_file(os.path.join(HERE, "privacy.html"), "text/html; charset=utf-8")
         elif u.path in ("/routing", "/routing.html"):
             self.send_file(os.path.join(HERE, "routing.html"), "text/html; charset=utf-8")
         elif u.path == "/api/routing/problem":

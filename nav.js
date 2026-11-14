@@ -60,7 +60,7 @@ window.QD = (() => {
         </div>
         <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
         <label class="consent"><input type="checkbox" name="consent" value="1">
-          <span>I agree to the <a href="/#privacy" target="_blank" rel="noopener">privacy note</a>.</span></label>
+          <span>I agree to the <a href="/privacy" target="_blank" rel="noopener">privacy note</a>.</span></label>
         <div class="msg" role="status" aria-live="polite"></div>
         <div class="row"><button class="go" type="submit">Sign up and continue</button><button class="later" type="button">Not now</button></div>
       </form></div>`;

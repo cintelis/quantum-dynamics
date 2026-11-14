@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · Quantum Dynamics</title>
+<meta name="description" content="What Quantum Dynamics keeps when you sign up, why, and how to see, correct or delete your details.">
+<link rel="canonical" href="https://qtumdynamics.com/privacy">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Quantum Dynamics">
+<meta property="og:title" content="Privacy · Quantum Dynamics">
+<meta property="og:description" content="What Quantum Dynamics keeps when you sign up, why, and how to see, correct or delete your details.">
+<meta property="og:url" content="https://qtumdynamics.com/privacy">
+<meta property="og:image" content="https://qtumdynamics.com/og.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:alt" content="Quantum Dynamics: simulate perovskite solar materials before you make them">
+<meta property="og:locale" content="en_AU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Privacy · Quantum Dynamics">
+<meta name="twitter:description" content="What Quantum Dynamics keeps when you sign up, why, and how to see, correct or delete your details.">
+<meta name="twitter:image" content="https://qtumdynamics.com/og.png?v=2">
+<style>
+:root {
+  /* same tokens as dashboard.html */
+  color-scheme: dark;
+  --page: #000000; --surface-1: #141414; --surface-2: #1c1c1c; --line: #262626;
+  --text-primary: #f2f2f2; --text-secondary: #b3b3b3; --text-muted: #8a8a8a;
+  --grid: #242424; --axis: #3a3a3a; --border: #262626;
+  --brand: #76b900; --brand-hover: #8ccf14;
+  --good: #0ca30c; --warning: #fab219; --critical: #d03b3b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; color: var(--text-primary); }
+html { scroll-padding-top: 72px; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: var(--brand); }
+a:hover { color: var(--brand-hover); }
+.topline { height: 3px; background: var(--brand); }
+.bar-top { display: flex; align-items: center; gap: 14px; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #000; position: sticky; top: 0; z-index: 10; }
+.mark { width: 14px; height: 14px; background: var(--brand); transform: skewX(-12deg); flex: none; }
+.brand { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 15px; white-space: nowrap; }
+.tag { color: var(--text-muted); font-size: 12px; border-left: 1px solid var(--line); padding-left: 14px; }
+.spacer { flex: 1; }
+.navlink { color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px; border: 1px solid transparent; }
+.navlink:hover { color: var(--brand); border-color: var(--line); }
+.device { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-secondary);
+  border: 1px solid var(--line); padding: 6px 10px; border-radius: 2px; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.device i { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+.device.on i { background: var(--brand); box-shadow: 0 0 8px var(--brand); }
+@media (max-width: 1180px) { .bar-top .tag { display: none; } }
+@media (max-width: 900px) { .bar-top .navlink { display: none; } }
+@media (max-width: 560px) { .bar-top .device { display: none; } }
+/* buttons: dashboard's button / button.primary */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-weight: 600; color: #000;
+  background: var(--brand); border: 1px solid var(--brand); border-radius: 2px; padding: 8px 16px; min-width: 96px;
+  text-decoration: none; cursor: pointer; white-space: nowrap; transition: border-color .12s, background .12s; }
+.btn:hover { background: var(--brand-hover); border-color: var(--brand-hover); color: #000; }
+.btn.ghost { background: transparent; color: var(--text-primary); border-color: #3a3a3a; }
+.btn.ghost:hover { border-color: var(--brand); color: var(--text-primary); }
+.btn.lg { padding: 10px 20px; font-size: 15px; }
+.btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+main { max-width: 1120px; margin: 0 auto; padding: 0 28px 24px; }
+.hero-band { position: relative; overflow: hidden; border-bottom: 1px solid var(--line);
+  background: radial-gradient(ellipse 55% 85% at 74% 50%, rgba(118,185,0,.20), rgba(118,185,0,.05) 45%, transparent 72%), #000; }
+.hero-band::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(118,185,0,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(118,185,0,.07) 1px, transparent 1px);
+  background-size: 44px 44px; -webkit-mask-image: radial-gradient(ellipse 70% 90% at 72% 55%, #000 10%, transparent 70%);
+  mask-image: radial-gradient(ellipse 70% 90% at 72% 55%, #000 10%, transparent 70%); }
+.hero-band canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-band::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(90deg, #000 0%, rgba(0,0,0,.82) 30%, rgba(0,0,0,0) 58%); }
+.hero-inner { position: relative; z-index: 2; max-width: 1120px; margin: 0 auto; padding: 0 28px; min-height: 540px;
+  display: flex; align-items: center; }
+.hero { padding: 80px 0 72px; max-width: 600px; }
+.hero-cap { position: absolute; z-index: 2; right: 28px; bottom: 16px; font-size: 11.5px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-muted); }
+.hero-cap b { color: var(--brand); font-weight: 700; }
+main > section:first-child { border-top: 0; }
+@media (max-width: 860px) {
+  .hero-band::after { background: linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.78)); }
+  .hero-inner { min-height: 0; }
+  .hero-cap { display: none; }
+}
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--brand); font-weight: 700; margin-bottom: 12px; }
+h1 { font-size: 44px; line-height: 1.08; margin: 0 0 18px; font-weight: 700; letter-spacing: -.02em; }
+h1 b { color: var(--brand); font-weight: 700; }
+.lead { font-size: 17px; line-height: 1.55; color: var(--text-secondary); margin: 0 0 28px; }
+.ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+section { padding: 44px 0; border-top: 1px solid var(--line); }
+h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary); margin: 0 0 16px;
+  display: flex; align-items: center; gap: 10px; }
+h2::before { content: ""; width: 3px; height: 12px; background: var(--brand); flex: none; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.tile.anim { grid-column: span 3; padding: 14px 18px; justify-content: center; }
+.tile.anim:hover { background: var(--surface-1); }
+.anim-box { flex: 1; display: flex; align-items: center; min-height: 150px; }
+.anim-box svg { width: 100%; height: 100%; max-height: 220px; display: block; font-family: inherit; }
+.ca-glow { filter: drop-shadow(0 0 4px #76b900); }
+.tile.anim .fig { margin-top: 8px; }
+@media (max-width: 980px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tile.anim { grid-column: span 1; } }
+@media (max-width: 560px) { .tiles { grid-template-columns: 1fr; } }
+.tile { background: var(--surface-1); padding: 18px; display: flex; flex-direction: column; transition: background .12s; }
+.tile:hover { background: #171d0f; }
+a.tile { color: inherit; text-decoration: none; }
+a.tile:hover h3 { color: var(--brand); }
+a.tile h3::after { content: " →"; color: var(--brand); opacity: 0; transition: opacity .12s; }
+a.tile:hover h3::after, a.tile:focus-visible h3::after { opacity: 1; }
+.tile h3 { margin: 12px 0 6px; font-size: 15px; font-weight: 700; }
+.tile p { margin: 0; color: var(--text-secondary); font-size: 13px; flex: 1; }
+.tile .ic { color: var(--brand); }
+.tile .fig { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-top: 14px;
+  padding-top: 10px; border-top: 1px solid var(--line); }
+ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1px; background: var(--line); border: 1px solid var(--line); }
+ol.steps li { counter-increment: s; background: var(--surface-1); padding: 14px 18px; }
+ol.steps li::before { content: "Step " counter(s); display: block; font-size: 11px; color: var(--brand); text-transform: uppercase;
+  letter-spacing: .08em; font-weight: 700; margin-bottom: 6px; }
+ol.steps b { display: block; font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 4px; }
+ol.steps span { color: var(--text-muted); font-size: 12.5px; }
+.split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 40px; align-items: start; }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
+.split p { color: var(--text-secondary); margin: 0 0 14px; font-size: 14.5px; line-height: 1.55; }
+form { background: var(--surface-1); border: 1px solid var(--border); border-radius: 2px; padding: 16px 18px 18px; display: grid; gap: 14px; }
+.form-h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--text-secondary);
+  margin: 0 -18px 2px; padding: 0 18px 12px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+.form-h::before { content: ""; width: 3px; height: 12px; background: var(--brand); }
+label { display: grid; gap: 5px; font-size: 12px; color: var(--text-muted); }
+label .opt { color: #6a6a6a; }
+input:not([type=checkbox]), select { height: 36px; }
+input, select, textarea { font: inherit; color: var(--text-primary); background: var(--surface-2); border: 1px solid #333; border-radius: 2px; padding: 7px 9px; }
+input:hover, select:hover, textarea:hover { border-color: #4a4a4a; }
+textarea { min-height: 90px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px) { .row2 { grid-template-columns: 1fr; } }
+.consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--text-secondary); }
+.consent input { margin-top: 4px; accent-color: var(--brand); }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.msg { font-size: 14px; min-height: 1em; }
+.msg.err { color: #ff9a9a; background: rgba(208,59,59,.12); border: 1px solid rgba(208,59,59,.4); padding: 8px 12px; border-radius: 2px; }
+#open { position: relative; }
+#open::before { content: ""; position: absolute; inset: 0 -28px; z-index: -1; pointer-events: none;
+  background: radial-gradient(ellipse 45% 60% at 15% 20%, rgba(118,185,0,.09), transparent 70%); }
+.open-head { display: grid; grid-template-columns: minmax(260px, .8fr) 1.2fr; gap: 12px 48px; align-items: end; margin-bottom: 22px; }
+.open-head .su-h { margin: 0; }
+.open-head p { margin: 0; color: var(--text-secondary); font-size: 14.5px; line-height: 1.55; }
+@media (max-width: 860px) { .open-head { grid-template-columns: 1fr; } }
+.su-h { font-size: 30px; line-height: 1.12; letter-spacing: -.015em; font-weight: 700; }
+.feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.feat { position: relative; background: var(--surface-1); padding: 20px 18px 22px; display: flex; flex-direction: column; gap: 8px;
+  color: inherit; text-decoration: none; transition: background .12s; overflow: hidden; }
+.feat::before { content: ""; position: absolute; left: 0; top: 0; height: 2px; width: 0; background: var(--brand); transition: width .2s; }
+.feat:hover { background: #171d0f; }
+.feat:hover::before, .feat:focus-visible::before { width: 100%; }
+.feat .ic { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;
+  color: var(--brand); background: rgba(118,185,0,.10); border: 1px solid #2f3d14; border-radius: 2px; }
+.feat b { font-size: 15px; }
+.feat span:last-child { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.privacy-box { margin-top: 14px; background: var(--surface-1); border: 1px solid var(--line); }
+.privacy-box summary { display: flex; gap: 12px; align-items: center; padding: 14px 18px; cursor: pointer; list-style: none; }
+.privacy-box summary::-webkit-details-marker { display: none; }
+.privacy-box summary::after { content: "+"; margin-left: auto; color: var(--brand); font-size: 20px; line-height: 1; }
+.privacy-box[open] summary::after { content: "\2212"; }
+.privacy-box summary:hover b { color: var(--brand); }
+.privacy-box .ic { color: var(--brand); display: flex; }
+.privacy-box b { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.privacy-box .hint { color: var(--text-muted); font-size: 13px; }
+.privacy-box p { margin: 0; padding: 0 18px 16px 52px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; max-width: 900px; }
+.gh { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; color: var(--text-secondary);
+  border: 1px solid var(--line); border-radius: 2px; transition: color .12s, border-color .12s; }
+.gh:hover, .gh:focus-visible { color: var(--text-primary); border-color: var(--brand); }
+.foot-social { display: inline-flex; gap: 8px; margin-left: 8px; vertical-align: middle; }
+.msg:empty { display: none; }
+body { position: relative; z-index: 0; }
+footer { border-top: 1px solid var(--line); background: #070707; }
+.foot { max-width: 1120px; margin: 0 auto; padding: 44px 28px 32px; display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 40px; }
+.foot-logo { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.foot-brand p { color: var(--text-secondary); font-size: 14px; max-width: 340px; margin: 12px 0 18px; }
+.foot-col { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+.foot-col h4 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); }
+.foot-col a { color: var(--text-secondary); text-decoration: none; }
+.foot-col a:hover { color: var(--brand); }
+.foot-col .soon { color: var(--text-muted); }
+.foot-col .soon em { font-style: normal; font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  border: 1px solid #3a3a3a; border-radius: 2px; padding: 1px 5px; margin-left: 4px; }
+.foot-base { width: calc(100% - 56px); max-width: 1064px; margin: 0 auto; padding: 16px 0 22px; border-top: 1px solid var(--line);
+  color: var(--text-muted); font-size: 12.5px; }
+.foot-base a { color: var(--text-secondary); text-decoration: none; }
+.foot-base a:hover { color: var(--brand); }
+@media (max-width: 760px) { .foot { grid-template-columns: 1fr 1fr; } .foot-brand { grid-column: 1 / -1; } }
+[hidden] { display: none !important; }
+.legal { max-width: 760px; padding: 48px 0 64px; min-height: calc(100vh - 380px); box-sizing: border-box; }
+.legal h1 { font-size: 34px; margin: 0 0 18px; display: flex; align-items: center; gap: 12px; }
+.legal h1 .ic { color: var(--brand); display: flex; }
+.legal p { color: var(--text-secondary); font-size: 16px; line-height: 1.65; margin: 0 0 16px; }
+.legal .back { font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="topline"></div>
+<header class="bar-top">
+  <a href="/" style="display:contents;color:inherit;text-decoration:none"><div class="mark" aria-hidden="true"></div>
+  <div class="brand">Quantum Dynamics</div></a>
+  <div class="tag">CUDA-Q · open perovskite research tools</div>
+  <div class="spacer"></div>
+  <a class="navlink" href="/explorer">Materials explorer</a>
+  <a class="navlink" href="/molecules">New molecules</a>
+  <a class="navlink" href="/chain">Spin chain</a>
+  <div class="device on"><i></i><span>Simulator online</span></div>
+  <a class="gh" href="https://github.com/cintelis/quantum-dynamics" target="_blank" rel="noopener" aria-label="Source code on GitHub" title="Source code on GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a>
+  <a class="btn" href="/dashboard">Open the dashboard</a>
+</header>
+
+<main>
+  <div class="legal">
+    <h1><span class="ic"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>Privacy</h1>
+    <p>When you sign up we keep what you type (name, email and, if you give them, organisation and role), the time
+          you signed up, and one cookie that keeps you signed in. We use it to give you access and to contact you about
+          this project. It stays on our server: never sold, never shared. To see, correct or delete your details, email
+          <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>.</p>
+    <p class="back"><a href="/">← Back to Quantum Dynamics</a></p>
+  </div>
+</main>
+
+<footer>
+  <div class="foot">
+    <div class="foot-brand">
+      <div class="foot-logo"><div class="mark"></div><span>Quantum Dynamics</span></div>
+      <p>Open simulation tools for perovskite solar materials, built on NVIDIA CUDA-Q.</p>
+      <a class="btn" href="/dashboard">Open the dashboard</a>
+      <div class="foot-social">
+        <a class="gh" href="https://github.com/cintelis/quantum-dynamics" target="_blank" rel="noopener" aria-label="Quantum Dynamics on GitHub" title="GitHub"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg></a>
+      </div>
+    </div>
+    <nav class="foot-col" aria-label="Tools">
+      <h4>Tools</h4>
+      <a href="/explorer">Materials explorer</a>
+      <a href="/molecules">New molecules</a>
+      <a href="/dashboard">Dynamics dashboard</a>
+      <a href="/chain">Spin chain at scale</a>
+      <a href="/routing">Delivery routing</a>
+    </nav>
+    <nav class="foot-col" aria-label="Project">
+      <h4>Project</h4>
+      <a href="/#how">How it works</a>
+      <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>
+      <a href="https://github.com/cintelis/quantum-dynamics" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+  <div class="foot-base">
+    <span>© 2026 Cintelis. Code under the Apache 2.0 licence. · <a href="/privacy">Privacy</a></span>
+  </div>
+</footer>
+</body>
+</html>
