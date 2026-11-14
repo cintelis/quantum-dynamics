@@ -115,7 +115,7 @@ def rate_ok(ip, limit, window=3600):
 STATIC = {"/og.png": "image/png", "/favicon.ico": "image/x-icon", "/favicon.svg": "image/svg+xml",
           "/apple-touch-icon.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
           "/site.webmanifest": "application/manifest+json",
-          "/anime.esm.min.js": "text/javascript; charset=utf-8", "/circuit-anim.js": "text/javascript; charset=utf-8",
+          "/anime.esm.min.js": "text/javascript; charset=utf-8", "/circuit-anim.js": "text/javascript; charset=utf-8", "/perovskite-anim.js": "text/javascript; charset=utf-8",
           "/contact-anim.js": "text/javascript; charset=utf-8"}
 SITEMAP_PAGES = ["/", "/explorer", "/molecules", "/dashboard", "/chain", "/routing", "/privacy"]
 

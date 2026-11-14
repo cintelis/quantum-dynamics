@@ -61,6 +61,19 @@ details.primer { margin-bottom: 16px; }
 details.primer summary { cursor: pointer; font-weight: 700; color: var(--text-secondary); font-size: 13px; }
 .primer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; color: var(--text-secondary); font-size: 13px; }
 .primer-grid b { color: var(--text-primary); }
+.pv { margin: 12px 0 14px; border: 1px solid var(--line); background: #070707; }
+.pv-canvas canvas { display: block; }
+.pv-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); }
+.pv-steps { display: flex; gap: 6px; flex-wrap: wrap; }
+.pv-step, .pv-pause { position: relative; overflow: hidden; background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--line);
+  font-family: inherit; font-size: 12px; font-weight: 600; padding: 7px 10px; cursor: pointer; }
+.pv-step::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--brand); transform: scaleX(var(--p, 0)); transform-origin: left; }
+.pv-step.on { color: var(--text-primary); border-color: #3a3a3a; }
+.pv-step:hover, .pv-pause:hover { color: var(--brand); }
+.pv-key { display: flex; gap: 6px 14px; flex-wrap: wrap; padding: 0 10px 9px; font-size: 11.5px; color: var(--text-muted); }
+.pv-key i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.primer-grid > div { border-left: 2px solid transparent; padding-left: 10px; transition: border-color .3s, color .3s; }
+.primer-grid > div.on { border-left-color: var(--brand); color: var(--text-primary); }
 .primer pre { color: var(--text-primary); background: #0a0a0a; padding: 10px; font-size: 12px; margin: 6px 0 0; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-bottom: 16px; }
 .tile { background: var(--surface-1); padding: 14px 18px; }
@@ -168,15 +181,29 @@ ul.buy .chip { font-size: 10.5px; }
 
     <details class="card primer">
       <summary>New to perovskites? How the pieces fit (30-second read)</summary>
+      <div class="pv">
+        <div class="pv-canvas" id="pvAnim" role="img" aria-label="Animated 3D model of a perovskite crystal"></div>
+        <div class="pv-bar">
+          <div class="pv-steps">
+            <button type="button" class="pv-step" data-pv-step>1 · Cage</button>
+            <button type="button" class="pv-step" data-pv-step>2 · Salts → crystal</button>
+            <button type="button" class="pv-step" data-pv-step>3 · Spacers</button>
+            <button type="button" class="pv-step" data-pv-step>4 · Formula</button>
+            <button type="button" class="pv-step" data-pv-step>5 · RP vs DJ</button>
+          </div>
+          <button type="button" class="pv-pause" id="pvPause" aria-pressed="false">Pause</button>
+        </div>
+        <div class="pv-key"><span><i style="background:#7d8a99"></i>Pb lead</span><span><i style="background:#a35fe0"></i>I iodide</span><span><i style="background:#c0503a"></i>Br bromide</span><span><i style="background:#46c46a"></i>Cl chloride</span><span><i style="background:#5b82ff"></i>N nitrogen</span><span><i style="background:#9a9a9a"></i>C carbon</span><span><i style="background:#ececec"></i>H hydrogen</span><span>· illustration, bond lengths to scale</span></div>
+      </div>
       <div class="primer-grid">
-        <div><b>ABX₃ is a crystal shape.</b> B = lead (Pb) at the centre of cages, X = halide (iodide I, bromide Br, chloride Cl)
+        <div data-pv-card><b>ABX₃ is a crystal shape.</b> B = lead (Pb) at the centre of cages, X = halide (iodide I, bromide Br, chloride Cl)
           making the cage walls, A = a small positive molecule sitting in the gaps. Example: MAPbI₃.</div>
-        <div><b>Cations (+) and anions (−)</b> attract, so mixing salts like methylammonium iodide (MA⁺ I⁻) with lead iodide in
+        <div data-pv-card><b>Cations (+) and anions (−)</b> attract, so mixing salts like methylammonium iodide (MA⁺ I⁻) with lead iodide in
           solution and drying it grows the crystal. The halide mostly sets which colours of light are absorbed.</div>
-        <div><b>Big cations are spacers.</b> Too big for the gaps, they slice the crystal into sheets n layers thick, like a club
+        <div data-pv-card><b>Big cations are spacers.</b> Too big for the gaps, they slice the crystal into sheets n layers thick, like a club
           sandwich. Spacers repel water (more stable) but block charge (less efficient).
           <pre>[spacer] [Pb–I sheet × n] [spacer] [Pb–I sheet × n] …</pre></div>
-        <div><b>Reading a formula:</b> (PEA)₂MA₂Pb₃I₁₀ = two PEA spacers, an n = 3 sheet (2 MA + 3 Pb + 10 I).
+        <div data-pv-card><b>Reading a formula:</b> (PEA)₂MA₂Pb₃I₁₀ = two PEA spacers, an n = 3 sheet (2 MA + 3 Pb + 10 I).
           <b>RP</b> spacers have one charged end (pairs, with a gap); <b>DJ</b> spacers have two (one molecule bridges sheets, no gap).</div>
       </div>
     </details>
@@ -415,5 +442,6 @@ function vibTip(ev, lines) {
 init().catch(e => { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, "Could not load explorer data: " + e.message)); });
 </script>
 <script src="/nav.js"></script>
+<script type="module" src="/perovskite-anim.js?v=1"></script>
 </body>
 </html>
