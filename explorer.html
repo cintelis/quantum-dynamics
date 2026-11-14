@@ -439,7 +439,7 @@ function showDetail(c, s, cat) {
     const host = c.kind === "3D" ? ((c.formula.match(/^(MA|FA)/) || [])[1] || "FA") : c.A;
     const hostName = { MA: "methylammonium", FA: "formamidinium" }[host];
     const others = [hostName && (c.kind === "3D" || c.n !== 1) ? `${hostName} ${want}` : null, `lead ${want}`].filter(Boolean).join(" and ");
-    if (need.length) group("Needed for this recipe", `${c.formula} is a${want === "iodide" ? "n" : ""} ${want} perovskite, so ${cat.name} goes in as its ${want} salt. ` +
+    if (need.length) group("Needed for this recipe", `${c.formula} is a${want === "iodide" ? "n" : ""} ${want} perovskite, so ${/^[A-Z][a-z]/.test(cat.name) ? cat.name[0].toLowerCase() + cat.name.slice(1) : cat.name} goes in as its ${want} salt. ` +
       `You also need ${others} (not listed here).`, need, "need");
     else d.append(el("div", { class: "muted buy-note" }, `No ${cat.name} ${want} is listed by the supplier. The recipe also needs ${others}.`));
     group("Other halide · changes the recipe", `Using it swaps in ${want === "iodide" ? "bromide, which raises" : "iodide, which lowers"} the band gap.`, swap);
