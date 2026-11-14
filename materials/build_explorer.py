@@ -4,7 +4,9 @@ Steps 2-4 of the perovskite composition explorer (run in WSL: needs RDKit + SciP
     ~/cudaq-env/bin/python materials/build_explorer.py
 
 Inputs
-  data/catalogue.json                      purchasable salts (from fetch_catalogue.py)
+  data/catalogue.json                      purchasable salts, Greatcell (from fetch_catalogue.py)
+  data/catalogue_ossila.json               Ossila's perovskite precursors (from fetch_ossila.py), if present
+  Cations sold by more than one supplier are merged by structure, so each appears once with every product.
   data/perovskite_db/Perovskite_database_content_all_data.csv
         The Perovskite Database Project, Jacobsson et al., Nature Energy 7, 107 (2022),
         snapshot v1.0.1 (Zenodo 10.5281/zenodo.5837035, CC BY 4.0), ~42k devices to Feb 2020.
@@ -38,6 +40,11 @@ import funnel  # noqa: E402
 DATA = os.path.join(ROOT, "data")
 DB_CSV = os.path.join(DATA, "perovskite_db", "Perovskite_database_content_all_data.csv")
 CACHE = os.path.join(DATA, "pubchem_cache.json")
+# (file, supplier name, product page base URL or None, currency). Files that do not exist are skipped.
+CATALOGUES = [
+    ("catalogue.json", "Greatcell Solar Materials", None, None),
+    ("catalogue_ossila.json", "Ossila", None, None),
+]
 
 ANIONS = ["iodide", "bromide", "chloride", "thiocyanate", "tetrafluoroborate", "trifluoroacetate", "mesylate",
           "triflate", "tosylate", "acetate", "hexafluorophosphate", "cyanate", "formate"]
@@ -96,9 +103,24 @@ def _normalise_tables():
 
 
 def parse_catalogue():
-    cat = json.load(open(os.path.join(DATA, "catalogue.json"), encoding="utf-8"))
     pat = re.compile(r"\s+(" + "|".join(ANIONS) + r")\b", re.I)
-    cations = {}
+    cations, sources = {}, []
+    for fname, supplier, base, cur in CATALOGUES:
+        path = os.path.join(DATA, fname)
+        if not os.path.exists(path):
+            continue
+        cat = json.load(open(path, encoding="utf-8"))
+        supplier = cat.get("supplier") or supplier
+        cur = cat.get("currency") or cur
+        n0 = sum(len(c["products"]) for c in cations.values())
+        _parse_one(cat, supplier, base, cur, pat, cations)
+        sources.append({"supplier": supplier, "products": len(cat["products"]),
+                        "salts": sum(len(c["products"]) for c in cations.values()) - n0,
+                        "fetched": cat.get("fetched"), "currency": cur})
+    return sources, cations
+
+
+def _parse_one(cat, supplier, base, cur, pat, cations):
     for p in cat["products"]:
         name = re.split(r"\s*\|", p["name"])[0].strip()
         m = pat.search(name)
@@ -112,10 +134,28 @@ def parse_catalogue():
         cation = re.sub(r"\s*>?\s*99[.\d]*\s*%?", "", cation).strip()
         key = norm(cation)
         c = cations.setdefault(key, {"name": cation, "products": []})
-        c["products"].append({"anion": m.group(1).lower(), "sku": p["sku"], "cas": p.get("cas"), "id": p["id"],
-                              "price": p.get("fromPrice") or p.get("price"), "inStock": p.get("inStock"),
-                              "url": p.get("urlKey")})
-    return cat, cations
+        url = p.get("url") if str(p.get("url", "")).startswith("https://") else (base + p["urlKey"] if base and p.get("urlKey") else None)
+        c["products"].append({"supplier": supplier, "anion": m.group(1).lower(), "sku": p["sku"], "cas": p.get("cas"),
+                              "price": p.get("fromPrice") or p.get("price"), "currency": cur, "inStock": p.get("inStock"),
+                              "packs": p.get("packs") or [], "url": url})
+
+
+def merge_by_structure(cations):
+    """Two suppliers may spell one cation differently: keep one entry per structure, with every product."""
+    by_smiles, out = {}, {}
+    for key, c in sorted(cations.items(), key=lambda kv: -len(kv[1]["products"])):
+        smi = (c.get("desc") or {}).get("cation_smiles")
+        if smi and smi in by_smiles:
+            keep = out[by_smiles[smi]]
+            keep["products"] += c["products"]
+            keep.setdefault("other_names", []).append(c["name"])
+            keep["aliases"] = sorted(set(keep.get("aliases", [])) | set(ALIASES.get(key, [])))
+            continue
+        if smi:
+            by_smiles[smi] = key
+        c["aliases"] = ALIASES.get(key, [])
+        out[key] = c
+    return out
 
 
 # ---------------------------------------------------------------- 2. PubChem structures
@@ -207,9 +247,9 @@ def stats(pces):
 # ---------------------------------------------------------------- 4. candidates
 def main():
     _normalise_tables()
-    cat, cations = parse_catalogue()
+    sources, cations = parse_catalogue()
     cache = json.load(open(CACHE)) if os.path.exists(CACHE) else {}
-    print(f"catalogue: {len(cat['products'])} products, {len(cations)} cations")
+    print("catalogues: " + ", ".join(f"{s_['supplier']} {s_['salts']} salts" for s_ in sources) + f" -> {len(cations)} cation names")
 
     for i, (key, c) in enumerate(sorted(cations.items()), 1):
         prods = sorted(c["products"], key=lambda p: (p["anion"] != "iodide", p["anion"]))
@@ -230,6 +270,8 @@ def main():
             print(f"  structures {i}/{len(cations)}", flush=True)
             json.dump(cache, open(CACHE, "w"))
     json.dump(cache, open(CACHE, "w"))
+    cations = merge_by_structure(cations)
+    print(f"distinct cations after merging by structure: {len(cations)}")
 
     # roles
     for key, c in cations.items():
@@ -239,7 +281,7 @@ def main():
             c["role"] = "DJ spacer"
         else:
             c["role"] = "RP spacer"
-        c["aliases"] = ALIASES.get(key, [])
+        c["suppliers"] = sorted({p["supplier"] for p in c["products"]})
         c["halides"] = sorted({HALIDE[p["anion"]] for p in c["products"] if p["anion"] in HALIDE})
 
     db = load_db()
@@ -291,7 +333,7 @@ def main():
                         "role": c["role"], "A": A, "X": X, "n": n,
                         "eg_est": funnel.LEVELS_MEV[X][n - 1] / 1000,
                         "combo": cs, "spacer_db": c["db"], "analogue": c["analogue"],
-                        "design": design_points(c, n), "funnel": fp,
+                        "design": design_points(c, n), "funnel": fp, "suppliers": c["suppliers"],
                     })
     # 3D: FA-based binary mixes with one other small cation from the catalogue
     for key, c in sorted(small.items()):
@@ -309,13 +351,13 @@ def main():
                     "eg_est": eg, "tolerance": round(t, 3), "combo": cs, "spacer_db": c["db"], "analogue": None,
                     "design": {"points": 6 if 0.8 <= t <= 1.0 else 0,
                                "notes": [f"tolerance factor {t:.3f} " + ("in 0.8–1.0: 3D cage likely" if 0.8 <= t <= 1.0 else "outside 0.8–1.0: 3D cage unlikely")]},
-                    "funnel": None,
+                    "funnel": None, "suppliers": c["suppliers"],
                 })
 
     out = {
         "generated": time.strftime("%Y-%m-%d %H:%M"),
         "sources": {
-            "catalogue": {"url": cat["source"], "products": len(cat["products"])},
+            "catalogues": sources,
             "database": "The Perovskite Database Project (Jacobsson et al., Nature Energy 2022), v1.0.1 snapshot, CC BY 4.0",
             "structures": "PubChem PUG REST, descriptors with RDKit",
         },

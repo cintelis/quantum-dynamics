@@ -34,6 +34,7 @@ from urllib.parse import parse_qs, quote, urlparse
 
 import numpy as np
 
+import explorer_api
 import sim
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -99,6 +100,42 @@ def rate_ok(ip, limit, window=3600):
             return False
         RATE[ip] = hits + [now]
         return True
+
+# Data endpoints are for the site's own pages, not bulk download. A visitor's browser gets a short-lived signed
+# "visit" cookie with every page; /api/* answers visitors only with that cookie and the browser's same-origin
+# marker (Sec-Fetch-Site), so a script calling the API directly is refused. Everyone is also rate limited per
+# address: requests per 10 minutes and explorer rows per day (signed-up users get more).
+VISIT_COOKIE = "qd_visit"
+VISIT_TTL = 6 * 3600
+API_RATE = {"visitor": 240, "member": 900}          # requests per 10 minutes
+ROW_BUDGET = {"visitor": 1500, "member": 6000}      # explorer rows per 24 hours
+BUDGET = {}                                         # ip -> [(time, rows)]
+
+
+def make_visit():
+    ts = str(int(time.time()))
+    return ts + "." + _b64(hmac.new(SESSION_KEY, b"visit." + ts.encode(), hashlib.sha256).digest()[:16])
+
+
+def visit_ok(token):
+    try:
+        ts, sig = token.split(".", 1)
+        good = _b64(hmac.new(SESSION_KEY, b"visit." + ts.encode(), hashlib.sha256).digest()[:16])
+        return hmac.compare_digest(sig, good) and 0 <= time.time() - int(ts) < VISIT_TTL
+    except Exception:
+        return False
+
+
+def budget_ok(key, rows, limit, window=86400):
+    now = time.time()
+    with RATE_LOCK:
+        used = [(t, n) for t, n in BUDGET.get(key, []) if now - t < window]
+        if sum(n for _, n in used) + rows > limit:
+            BUDGET[key] = used
+            return False
+        BUDGET[key] = used + [(now, rows)]
+        return True
+
 
 # One run at a time: the solver is CPU-bound, and CUDA-Q operator building has global state.
 RUN_LOCK = threading.Lock()
@@ -367,6 +404,37 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
         return False
 
+    def cookie(self, name):
+        c = SimpleCookie()
+        try:
+            c.load(self.headers.get("Cookie") or "")
+        except Exception:
+            return None
+        return c[name].value if name in c else None
+
+    def api_ok(self, path):
+        """Data requests: from this site's pages, within the rate limit. Answers and returns False otherwise."""
+        if not GATED or not path.startswith("/api/") or path == "/api/session" or self.client_address[0] in ("127.0.0.1", "::1"):
+            return True
+        who = "member" if self.session() else "visitor"
+        if who == "visitor":
+            if self.headers.get("Sec-Fetch-Site") != "same-origin" or not visit_ok(self.cookie(VISIT_COOKIE) or ""):
+                self.send_json({"error": "This data is shown on the site's pages; open https://" + (CANONICAL_HOST or "the site") +
+                                " in a browser. The code that builds it is open source."}, 403)
+                return False
+        if not rate_ok("api:" + self.client_ip(), API_RATE[who], 600):
+            self.send_json({"error": "Too many requests from this address. Please wait a few minutes."}, 429)
+            return False
+        return True
+
+    def rows_ok(self, n):
+        who = "member" if self.session() or not GATED or self.client_address[0] in ("127.0.0.1", "::1") else "visitor"
+        if budget_ok("rows:" + self.client_ip(), n, ROW_BUDGET[who]):
+            return True
+        self.send_json({"error": "Daily browsing limit reached for this address." +
+                        (" Sign up (free) for a higher limit." if who == "visitor" else " Please come back tomorrow.")}, 429)
+        return False
+
     def same_origin(self):
         o = self.headers.get("Origin")
         return not o or urlparse(o).netloc.lower() == (self.headers.get("Host") or "").lower()
@@ -405,6 +473,9 @@ class Handler(BaseHTTPRequestHandler):
         with open(path, "rb") as f:
             body = f.read()
         self.send_response(200)
+        if GATED and ctype.startswith("text/html"):
+            secure = "; Secure" if (CANONICAL_HOST or self.headers.get("X-Forwarded-Proto") == "https") else ""
+            self.send_header("Set-Cookie", f"{VISIT_COOKIE}={make_visit()}; Path=/; Max-Age={VISIT_TTL}; HttpOnly; SameSite=Strict{secure}")
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
@@ -418,7 +489,7 @@ class Handler(BaseHTTPRequestHandler):
     # ---------------------------------------------------------- routes
     def do_GET(self):
         u = urlparse(self.path)
-        if self.host_redirect() or not self.gate(u.path):
+        if self.host_redirect() or not self.gate(u.path) or not self.api_ok(u.path):
             return
         if u.path in ("/", "/index.html"):
             # public landing page with the sign-up form; on a local run (no sign-up) go straight to the dashboard
@@ -514,11 +585,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_file(p, "application/json")
             with open(p, encoding="utf-8") as f:
                 self.send_json(locked_molecules(json.load(f)))
-        elif u.path == "/api/explorer":
-            p = os.path.join(HERE, "data", "explorer.json")
-            if not os.path.exists(p):
+        elif u.path in ("/api/explorer/summary", "/api/explorer/rows", "/api/explorer/item"):
+            # one screen at a time, scored on the server: there is no whole-dataset download
+            q = parse_qs(u.query)
+            if u.path.endswith("summary"):
+                out = explorer_api.summary()
+            elif u.path.endswith("rows"):
+                if not self.rows_ok(explorer_api._num(q, "limit", explorer_api.PAGE_MAX, 1, explorer_api.PAGE_MAX, int)):
+                    return
+                out = explorer_api.query(q)
+            else:
+                if not self.rows_ok(1):
+                    return
+                out = explorer_api.item(q)
+            if out is None:
                 return self.send_json({"error": "data/explorer.json missing: run build_materials.sh"}, 404)
-            self.send_file(p, "application/json")
+            self.send_json(out, 404 if out.get("error") else 200)
         elif u.path == "/api/run":
             self.handle_run(parse_qs(u.query))
         else:

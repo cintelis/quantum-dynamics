@@ -21,6 +21,11 @@ user, and is capped at 4 CPUs and 6 GB (`QUANTUM_CPUS`, `QUANTUM_MEMORY` in `.en
 - `/admin` lists the sign-ups and downloads them as CSV after you enter `QUANTUM_ADMIN_KEY`. An admin can delete
   any saved run; everyone else only the runs they made.
 - Sign-ups are limited to 5 an hour per address, with a hidden field that catches simple bots.
+- The data behind the pages is not a download. `/api/*` answers a visitor only from a browser that loaded one of
+  the site's pages (a 6-hour signed `qd_visit` cookie plus the browser's `Sec-Fetch-Site: same-origin`), the
+  explorer sends one screen (60 rows) at a time, and each address is capped at 240 requests per 10 minutes and
+  1,500 explorer rows a day (900 and 6,000 when signed up). Turn on Cloudflare's Bot Fight Mode as well
+  (Security → Bots).
 
 ## 1. Cloudflare
 

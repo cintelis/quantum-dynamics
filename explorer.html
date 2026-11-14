@@ -94,6 +94,8 @@ tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
 .detail dt { color: var(--text-muted); }
 .detail dd { margin: 0; }
 .detail ul { margin: 6px 0 0 18px; padding: 0; color: var(--text-secondary); font-size: 13px; }
+ul.buy li { margin-bottom: 6px; }
+ul.buy .chip { font-size: 10.5px; }
 .detail .smiles { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--text-secondary); }
 .btn-primary { display: inline-block; background: var(--brand); color: #000; text-decoration: none; font-weight: 700; padding: 9px 16px; border-radius: 2px; margin-top: 8px; }
 .btn-primary:hover { background: var(--brand-hover); }
@@ -177,6 +179,8 @@ tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--brand); }
       <div class="field"><div class="lab"><label for="n">Layer thickness n</label><span class="info" tabindex="0" role="img" aria-label="How many lead-halide layers make up each sheet between spacers. Small n: thinner sheets, higher band gap, more stable. Large n: closer to 3D.">?<span class="bubble">How many lead-halide layers make up each sheet between spacers. Small n: thinner sheets, higher band gap, more stable. Large n: closer to 3D.</span></span></div>
         <select id="n"><option value="">All</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
       <div class="check"><label class="check-l"><input type="checkbox" id="untried" checked> Only combinations never reported</label><span class="info" tabindex="0" role="img" aria-label="Hides recipes already reported in the Perovskite Database (42,443 published devices), leaving only new combinations.">?<span class="bubble">Hides recipes already reported in the Perovskite Database (42,443 published devices), leaving only new combinations.</span></span></div>
+      <div class="field"><label for="supplier">Supplier</label>
+        <select id="supplier"><option value="">Any</option></select></div>
       <div class="field"><label for="q">Search spacer or formula</label><input type="search" id="q" placeholder="e.g. thiophene, fluoro, PDA"></div>
     </div>
 
@@ -206,73 +210,66 @@ const PARTS = [
   { key: "design", label: "Design rules", max: 28, color: "var(--s3)" },
   { key: "novelty", label: "Novelty", max: 12, color: "var(--s4)" },
 ];
-let DATA = null, rows = [], shown = 60, selected = null;
-
-function score(c) {
-  const target = +$("target").value;
-  const fit = 30 * Math.exp(-(((c.eg_est - target) / 0.3) ** 2));
-  let evidence = 0, evNote;
-  const sd = c.spacer_db || {};
-  if (sd.devices > 0 && sd.best_pce) {
-    evidence = 30 * Math.min(sd.best_pce / 23, 1) * (sd.devices >= 3 ? 1 : 0.7);
-    evNote = `${c.spacer || c.A} itself: ${sd.devices} devices, best ${sd.best_pce}%`;
-  } else if (c.analogue && c.analogue.best_pce) {
-    evidence = 30 * 0.8 * c.analogue.similarity * Math.min(c.analogue.best_pce / 23, 1);
-    evNote = `never reported; nearest reported analogue ${c.analogue.name} (similarity ${c.analogue.similarity}, best ${c.analogue.best_pce}%)`;
-  } else evNote = "no reported device or close analogue";
-  const design = Math.min(28, (c.design && c.design.points) || 0);
-  const nd = c.combo.devices;
-  const novelty = nd === 0 ? 12 : nd <= 3 ? 6 : 0;
-  let total = fit + evidence + design + novelty, warn = null;
-  if (c.kind === "3D" && c.tolerance && (c.tolerance < 0.8 || c.tolerance > 1.0)) {
-    total *= 0.4;  // the 3D cage is unlikely to form at all; other parts are moot
-    warn = `Tolerance factor ${c.tolerance}: this cation is the wrong size for a 3D cage, so a non-perovskite phase is likely (score × 0.4)`;
-  }
-  return { fit, evidence, design, novelty, total, evNote, warn };
-}
+let SUM = null, rows = [], total = 0, shown = 60, selected = null, seq = 0;
+const PAGE = 60;
+const api = (path, params) => fetch(path + "?" + new URLSearchParams(params)).then(async r => {
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+});
+const filters = () => ({ target: $("target").value, kind: $("kind").value, role: $("role").value, A: $("A").value, X: $("X").value,
+  n: $("n").value, supplier: $("supplier").value, untried: $("untried").checked ? "1" : "", q: $("q").value.trim() });
 
 async function init() {
   await vibLoad();
-  const r = await fetch("/api/explorer");
-  DATA = await r.json();
-  if (DATA.error) { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, DATA.error)); return; }
-  const cats = DATA.cations;
+  SUM = await api("/api/explorer/summary", {});
+  const t = SUM.tiles;
   const tiles = [
-    ["Catalogue products", DATA.sources.catalogue.products, "listed products scanned"],
-    ["Distinct cations", cats.length, `${cats.filter(c => c.desc).length} with a structure from PubChem`],
-    ["In published devices", cats.filter(c => c.db.devices > 0).length, "cations matched in the Perovskite Database"],
-    ["Candidate formulas", DATA.candidates.length, "purchasable compositions"],
-    ["Never reported", DATA.candidates.filter(c => c.combo.devices === 0).length, "spacer + cation + halide combination"],
+    ["Catalogue products", t.products, SUM.sources.catalogues.map(c => c.supplier).join(" · ")],
+    ["Distinct cations", t.cations, `${t.with_structure} with a structure from PubChem`],
+    ["In published devices", t.in_db, "cations matched in the Perovskite Database"],
+    ["Candidate formulas", t.candidates, "purchasable compositions"],
+    ["Never reported", t.never, "spacer + cation + halide combination"],
   ];
-  $("tiles").replaceChildren(...tiles.map(([k, v, h]) => { const t = el("div", { class: "tile" }); t.append(el("div", { class: "k" }, k), el("div", { class: "v" }, v.toLocaleString()), el("div", { class: "h" }, h)); return t; }));
+  $("tiles").replaceChildren(...tiles.map(([k, v, h]) => { const e = el("div", { class: "tile" }); e.append(el("div", { class: "k" }, k), el("div", { class: "v" }, v.toLocaleString()), el("div", { class: "h" }, h)); return e; }));
   $("legend").replaceChildren(...PARTS.map(p => { const s = el("span"); const i = el("i"); i.style.background = p.color; s.append(i, document.createTextNode(`${p.label} (max ${p.max})`)); return s; }));
-  $("foot").textContent = `Sources: ${DATA.sources.database}; ${DATA.sources.structures}; a supplier catalogue (${DATA.sources.catalogue.products} products, public listing). Built ${DATA.generated}. ` +
-    "Band gaps are typical values for each layer thickness and halide, not calculations. Database matching uses abbreviations, so a few reports may be missed.";
-  for (const id of ["target", "kind", "role", "A", "X", "n", "untried"]) $(id).onchange = () => { shown = 60; render(); };
-  $("q").oninput = () => { shown = 60; render(); };
-  $("more").onclick = () => { shown += 60; render(); };
-  // deep link: #sel=<formula> opens that candidate's details
-  const sel = new URLSearchParams(location.hash.slice(1)).get("sel");
-  if (sel) { const c = DATA.candidates.find(c => c.formula === sel); if (c) { selected = c; if (c.combo.devices) $("untried").checked = false; } }
+  $("supplier").append(...SUM.suppliers.map(x => el("option", { value: x }, x)));
+  if (SUM.suppliers.length < 2) $("supplier").closest(".field").style.display = "none";
+  $("foot").textContent = `Sources: ${SUM.sources.database}; ${SUM.sources.structures}; supplier catalogues: ` +
+    SUM.sources.catalogues.map(c => `${c.supplier} (${c.products} products${c.fetched ? ", " + c.fetched : ""})`).join(", ") +
+    `. Built ${SUM.generated}. Band gaps are typical values for each layer thickness and halide, not calculations. ` +
+    "Database matching uses abbreviations, so a few reports may be missed.";
+  for (const id of ["target", "kind", "role", "A", "X", "n", "supplier", "untried"]) $(id).onchange = () => load(true);
+  let tm; $("q").oninput = () => { clearTimeout(tm); tm = setTimeout(() => load(true), 250); };
+  $("more").onclick = () => load(false);
+  const sel = new URLSearchParams(location.hash.slice(1)).get("sel");      // deep link: #sel=<formula>
+  if (sel) openItem(sel);
+  await load(true);
+}
+
+async function load(reset) {
+  const my = ++seq;
+  const off = reset ? 0 : rows.length;
+  let out;
+  try { out = await api("/api/explorer/rows", { ...filters(), offset: off, limit: PAGE }); }
+  catch (e) { $("count").textContent = e.message; return; }
+  if (my !== seq) return;                          // a newer query has started
+  rows = reset ? out.rows : rows.concat(out.rows);
+  total = out.total;
   render();
 }
 
 function render() {
-  const f = { kind: $("kind").value, role: $("role").value, A: $("A").value, X: $("X").value, n: $("n").value, q: $("q").value.trim().toLowerCase() };
-  rows = DATA.candidates.filter(c =>
-    (!f.kind || c.kind === f.kind) && (!f.role || c.role === f.role) && (!f.A || c.A === f.A || c.kind === "3D") &&
-    (!f.X || c.X === f.X) && (!f.n || String(c.n) === f.n) && (!$("untried").checked || c.combo.devices === 0) &&
-    (!f.q || (c.formula + " " + (c.spacer || "") + " " + c.A).toLowerCase().includes(f.q)))
-    .map(c => ({ c, s: score(c) })).sort((a, b) => b.s.total - a.s.total);
-  $("count").textContent = `${rows.length.toLocaleString()} match · showing top ${Math.min(shown, rows.length)}`;
+  $("count").textContent = `${total.toLocaleString()} match · showing top ${rows.length}`;
   const t = $("tbl"); t.replaceChildren();
   const thead = el("thead"), hr = el("tr");
   for (const [h, cls] of [["#", "num"], ["Formula", ""], ["Spacer / cation", ""], ["n", "num"], ["Gap ≈ eV", "num"], ["Reported", ""], ["Score", ""], ["", ""]]) hr.append(el("th", cls ? { class: cls } : {}, h));
   thead.append(hr); t.append(thead);
   const tb = el("tbody");
-  rows.slice(0, shown).forEach(({ c, s }, i) => {
+  rows.forEach((c, i) => {
+    const s = c.s;
     const tr = el("tr", { tabindex: "0" });
-    if (selected === c) tr.className = "sel";
+    if (selected === c.formula) tr.className = "sel";
     tr.append(el("td", { class: "num muted" }, String(i + 1)));
     tr.append(el("td", { class: "formula" }, c.formula));
     const sp = el("td"); sp.append(document.createTextNode((c.spacer || c.A) + " "), el("span", { class: "chip" }, c.kind === "3D" ? "3D" : c.role.replace(" spacer", "")));
@@ -286,14 +283,24 @@ function render() {
     bar.onpointermove = ev => showTip(ev, s); bar.onpointerleave = hideTip;
     cell.append(el("b", {}, s.total.toFixed(0)), bar); sc.append(cell); tr.append(sc);
     const act = el("td");
-    if (c.funnel) { const a = el("a", { href: funnelLink(c), class: "navlink", title: "Simulate the energy funnel for this spacer" }, "Simulate →"); a.onclick = e => e.stopPropagation(); act.append(a); }
+    if (c.funnel) { const a = el("a", { href: funnelLink(c, c.sdesc), class: "navlink", title: "Simulate the energy funnel for this spacer" }, "Simulate →"); a.onclick = e => e.stopPropagation(); act.append(a); }
     tr.append(act);
-    tr.onclick = tr.onkeydown = ev => { if (ev.type === "keydown" && ev.key !== "Enter") return; selected = c; render(); showDetail(c, s); };
+    tr.onclick = tr.onkeydown = ev => { if (ev.type === "keydown" && ev.key !== "Enter") return; openItem(c.formula); };
     tb.append(tr);
   });
   t.append(tb);
-  $("more").style.display = rows.length > shown ? "" : "none";
-  if (selected) { const r = rows.find(r => r.c === selected); if (r) showDetail(r.c, r.s); }
+  $("more").style.display = total > rows.length ? "" : "none";
+}
+
+async function openItem(formula) {
+  selected = formula;
+  render();
+  try {
+    const it = await api("/api/explorer/item", { formula, target: $("target").value });
+    if (selected === formula) showDetail(it.c, it.s, it.cat);
+  } catch (e) {
+    $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, e.message));
+  }
 }
 
 function showTip(ev, s) {
@@ -303,20 +310,19 @@ function showTip(ev, s) {
 }
 function hideTip() { $("tip").style.display = "none"; }
 
-function funnelLink(c) {
+function funnelLink(c, sd) {
+  sd = sd || {};
   const q = new URLSearchParams({ model: "funnel", J: c.funnel.J, gamma: c.funnel.gamma, n_max: Math.min(c.n, 5), halide: c.X,
-    spacer: `${c.spacer} (${c.formula})`, spacer_note: `Spacer length ${spacerOf(c).desc.length_A} Å, ${spacerOf(c).desc.rot_bonds} rotatable bonds, ${spacerOf(c).desc.aromatic_rings} aromatic rings → well spacing ${c.funnel.d} Å.` });
+    spacer: `${c.spacer} (${c.formula})`, spacer_note: `Spacer length ${sd.length_A} Å, ${sd.rot_bonds} rotatable bonds, ${sd.aromatic_rings} aromatic rings → well spacing ${c.funnel.d} Å.` });
   return "/dashboard#" + q.toString();
 }
-const spacerOf = c => DATA.cations.find(x => x.name === c.spacer) || { desc: {} };
 
-function showDetail(c, s) {
+function showDetail(c, s, cat) {
   const d = $("detail"); d.replaceChildren();
   $("layout").classList.remove("solo");
   const x = el("button", { class: "closeBtn", "aria-label": "Close details", title: "Close" }, "×");
   x.onclick = () => { selected = null; $("layout").classList.add("solo"); render(); };
   d.append(x);
-  const cat = c.kind === "3D" ? DATA.cations.find(x => x.desc && x.db && x.name && x.name.toLowerCase() === nameOfA(c.A)) : spacerOf(c);
   d.append(el("div", { class: "eyebrow" }, c.kind === "3D" ? "3D perovskite" : `Layered perovskite · ${c.role}`));
   d.append(el("h2", { class: "formula" }, c.formula));
   d.append(el("div", { class: "muted" }, c.kind === "3D"
@@ -353,19 +359,26 @@ function showDetail(c, s) {
   }
 
   if (cat && cat.products) {
-    d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Buy from the catalogue"));
-    const ul = el("ul");
-    for (const p of cat.products) {
-      const li = el("li", {}, `${cat.name} ${p.anion} · SKU ${p.sku}` + (p.cas ? ` · CAS ${p.cas}` : "") + (p.price ? ` · from $${p.price}` : "") + (p.inStock ? " · in stock" : " · out of stock"));
+    d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Where to buy"));
+    const ul = el("ul", { class: "buy" });
+    const money = p => p.price ? ` · from ${p.currency === "GBP" ? "£" : p.currency === "EUR" ? "€" : p.currency === "USD" ? "US$" : "$"}${(+p.price).toFixed(2)}` : "";
+    for (const p of [...cat.products].sort((a, b) => (a.supplier || "").localeCompare(b.supplier || "") || a.anion.localeCompare(b.anion))) {
+      const li = el("li");
+      if (p.supplier) li.append(el("span", { class: "chip" }, p.supplier), document.createTextNode(" "));
+      const label = `${cat.name} ${p.anion}`;
+      if (p.url) { const a = el("a", { href: p.url, target: "_blank", rel: "noopener" }, label + " ↗"); li.append(a); }
+      else li.append(document.createTextNode(label));
+      li.append(document.createTextNode(` · SKU ${p.sku}` + (p.cas ? ` · CAS ${p.cas}` : "") + money(p) +
+        (p.packs && p.packs.length ? ` (${p.packs.join(", ")})` : "") + (p.inStock ? " · in stock" : " · out of stock")));
       ul.append(li);
     }
-    if (c.kind === "quasi-2D") ul.append(el("li", { class: "muted" }, `plus ${c.A === "MA" ? "methylammonium" : "formamidinium"} ${c.X === "I" ? "iodide" : "bromide"} and lead ${c.X === "I" ? "iodide" : "bromide"} (lead salts are not in the listed catalogue)`));
+    if (c.kind === "quasi-2D") ul.append(el("li", { class: "muted" }, `plus ${c.A === "MA" ? "methylammonium" : "formamidinium"} ${c.X === "I" ? "iodide" : "bromide"} and lead ${c.X === "I" ? "iodide" : "bromide"} (lead salts not listed here)`));
     d.append(ul);
   }
   if (c.funnel) {
     d.append(el("div", { class: "sec", style: "margin-top:14px" }, "Energy funnel estimate"));
     d.append(el("div", { class: "muted" }, `Well spacing ${c.funnel.d} Å → coupling J ≈ ${c.funnel.J} meV; flexibility → dephasing γ ≈ ${c.funnel.gamma} meV (illustrative mapping).`));
-    d.append(el("a", { class: "btn-primary", href: funnelLink(c) }, "Simulate this spacer's energy funnel →"));
+    d.append(el("a", { class: "btn-primary", href: funnelLink(c, cat && cat.desc) }, "Simulate this spacer's energy funnel →"));
   }
   const vs = cat && cat.smiles ? vibSection(cat.smiles, vibTip) : null; if (vs) d.append(vs);
 }
@@ -375,7 +388,6 @@ function vibTip(ev, lines) {
   t.replaceChildren(...lines.map(l => el("div", {}, l)));
   t.style.display = "block"; t.style.left = (ev.clientX + 14) + "px"; t.style.top = (ev.clientY + 14) + "px";
 }
-const nameOfA = a => ({ MA: "methylammonium", FA: "formamidinium", EA: "ethylammonium", DMA: "dimethylammonium", GU: "guanidinium", Ace: "acetamidinium", IM: "imidazolium", TMA: "trimethylammonium" })[a];
 
 init().catch(e => { $("layout").classList.remove("solo"); $("detail").replaceChildren(el("p", { class: "err" }, "Could not load explorer data: " + e.message)); });
 </script>

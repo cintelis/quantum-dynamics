@@ -13,6 +13,7 @@ __pycache__/
 # data that is not ours to publish, too big for git, or not yet public (see README "Data")
 data/perovskite_db/
 data/catalogue.json
+data/catalogue_*.json
 data/explorer.json
 data/round1_results_template.csv
 data/new_molecules.json

@@ -162,6 +162,12 @@ window.QD = (() => {
   .qnav-chip.cur { border-color: #3a4d17; color: var(--brand, #76b900); }
   .qnav-sep { height: 1px; background: #222; margin: 12px 0; }
   .qnav-foot { font-size: 11.5px; color: var(--text-muted, #8a8a8a); margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .qnav-logo { display: inline-flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; }
+  .qnav-logo:hover .brand { color: var(--brand, #76b900); }
+  .qnav-logo:focus-visible { outline: 2px solid var(--brand, #76b900); outline-offset: 4px; }
+  .qnav-home { color: var(--text-secondary, #b3b3b3); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 10px;
+    border: 1px solid transparent; }
+  .qnav-home:hover, .qnav-home:focus-visible { color: var(--brand, #76b900); border-color: var(--line, #262626); outline: none; }
   .qnav-link { color: var(--text-secondary, #b3b3b3); text-decoration: underline; text-underline-offset: 2px; }
   .qnav-link:first-of-type { margin-left: auto; }
   .qnav-link:hover, .qnav-link:focus-visible { color: var(--brand, #76b900); }
@@ -171,6 +177,13 @@ window.QD = (() => {
   const bar = document.querySelector(".bar-top");
   if (!bar) return;
   bar.querySelectorAll(".navlink").forEach(a => a.remove());          // the menu replaces the old per-page links
+  // the logo and name go back to the landing page
+  const mark = bar.querySelector(".mark"), brand = bar.querySelector(".brand");
+  if (mark && brand && !bar.querySelector(".qnav-logo")) {
+    const home = document.createElement("a");
+    home.className = "qnav-logo"; home.href = "/"; home.title = "Quantum Dynamics home";
+    mark.before(home); home.append(mark, brand);
+  }
 
   const path = location.pathname.replace(/\.html$/, "").replace(/\/$/, "") || "/";
   const curPage = PAGES.find(p => p.href === path) || PAGES[0];
@@ -186,7 +199,9 @@ window.QD = (() => {
   btn.className = "qnav-btn"; btn.type = "button"; btn.innerHTML = svg("grid", 20);
   btn.setAttribute("aria-label", "Open page menu"); btn.setAttribute("aria-haspopup", "true");
   btn.setAttribute("aria-expanded", "false"); btn.setAttribute("aria-controls", "qnav-panel"); btn.title = "Pages (G)";
-  bar.append(here, btn);
+  const homeLink = document.createElement("a");
+  homeLink.className = "qnav-home"; homeLink.href = "/"; homeLink.textContent = "Home";
+  bar.append(homeLink, here, btn);
 
   const panel = document.createElement("div");
   panel.className = "qnav-panel"; panel.id = "qnav-panel"; panel.setAttribute("role", "dialog"); panel.setAttribute("aria-label", "Pages");
