@@ -41,7 +41,7 @@ DB_CSV = os.path.join(DATA, "perovskite_db", "Perovskite_database_content_all_da
 CACHE = os.path.join(DATA, "pubchem_cache.json")
 # (file, supplier name, product page base URL or None, currency). Files that do not exist are skipped.
 CATALOGUES = [
-    ("catalogue.json", "Supplier catalogue", None, None),
+    ("catalogue.json", "Greatcell Solar Materials", "https://www.greatcellsolarmaterials.com/", "AUD"),
 ]
 
 ANIONS = ["iodide", "bromide", "chloride", "thiocyanate", "tetrafluoroborate", "trifluoroacetate", "mesylate",
@@ -132,7 +132,7 @@ def _parse_one(cat, supplier, base, cur, pat, cations):
         cation = re.sub(r"\s*>?\s*99[.\d]*\s*%?", "", cation).strip()
         key = norm(cation)
         c = cations.setdefault(key, {"name": cation, "products": []})
-        url = p.get("url") if str(p.get("url", "")).startswith("https://") else (base + p["urlKey"] if base and p.get("urlKey") else None)
+        url = p.get("url") if str(p.get("url", "")).startswith("https://") else (base + p["urlKey"] + ".html" if base and p.get("urlKey") else None)
         c["products"].append({"supplier": supplier, "anion": m.group(1).lower(), "sku": p["sku"], "cas": p.get("cas"),
                               "price": p.get("fromPrice") or p.get("price"), "currency": cur, "inStock": p.get("inStock"),
                               "packs": p.get("packs") or [], "url": url})
