@@ -37,14 +37,14 @@ the whole site.
 <table>
   <tr>
     <td width="50%" valign="top">
-      <a href="https://qtumdynamics.com/explorer"><img src="docs/images/explorer.png" alt="Perovskite composition explorer"></a>
+      <a href="https://qtumdynamics.com/explorer"><img src="docs/screenshots/explorer.png" alt="Perovskite composition explorer"></a>
       <h3>Materials explorer</h3>
       <p>1,250 purchasable perovskite formulas built from a supplier's salts. Each is checked against ~42,000
       published devices and scored on band-gap fit, evidence, design rules and novelty.</p>
       <p><a href="https://qtumdynamics.com/explorer"><code>/explorer</code></a> · <code>materials/build_explorer.py</code></p>
     </td>
     <td width="50%" valign="top">
-      <a href="https://qtumdynamics.com/molecules"><img src="docs/images/molecules.png" alt="New spacer molecules"></a>
+      <a href="https://qtumdynamics.com/molecules"><img src="docs/screenshots/molecules.png" alt="New spacer molecules"></a>
       <h3>New molecules</h3>
       <p>167 generated spacer cations that aren't in the catalogue. Each is scored for predicted energy
       funnelling and ease of synthesis (RDKit) and checked against PubChem. Pick some and download a synthesis request.</p>
@@ -53,7 +53,7 @@ the whole site.
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <a href="https://qtumdynamics.com/dashboard"><img src="docs/images/dashboard.png" alt="Live quantum dynamics dashboard"></a>
+      <a href="https://qtumdynamics.com/dashboard"><img src="docs/screenshots/dashboard.png" alt="Live quantum dynamics dashboard"></a>
       <h3>Live dynamics dashboard</h3>
       <p>Lindblad master-equation models on CUDA-Q, streamed step by step: energy funnelling in layered films
       (including disordered films), a transmon qubit, qubit readout and spin chains. It includes what-if
@@ -61,7 +61,7 @@ the whole site.
       <p><a href="https://qtumdynamics.com/dashboard"><code>/dashboard</code></a> · <code>sim.py</code> <code>funnel.py</code> <code>transmon.py</code></p>
     </td>
     <td width="50%" valign="top">
-      <a href="https://qtumdynamics.com/chain"><img src="docs/images/chain.png" alt="Spin chain at 100 spins"></a>
+      <a href="https://qtumdynamics.com/chain"><img src="docs/screenshots/chain.png" alt="Spin chain at 100 spins"></a>
       <h3>Spin chain at scale</h3>
       <p>The dashboard's spin chain at 100 spins (2<sup>100</sup> states) with a matrix-product-state simulator,
       checked against exact runs, plus a preview with an IBM chip's recorded noise.</p>
@@ -70,7 +70,7 @@ the whole site.
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <a href="https://qtumdynamics.com/routing"><img src="docs/images/routing.png" alt="Delivery routing with QAOA"></a>
+      <a href="https://qtumdynamics.com/routing"><img src="docs/screenshots/routing.png" alt="Delivery routing with QAOA"></a>
       <h3>Delivery routing (QAOA)</h3>
       <p>Beyond materials: a quantum optimisation algorithm splits 6–12 delivery stops between two vans, with
       one qubit per stop. The angles are tuned live on CUDA-Q, and every possible plan is checked so you can see
@@ -78,7 +78,7 @@ the whole site.
       <p><a href="https://qtumdynamics.com/routing"><code>/routing</code></a> · <code>routing.py</code></p>
     </td>
     <td width="50%" valign="top">
-      <a href="https://qtumdynamics.com"><img src="docs/images/home.png" alt="Quantum Dynamics home page"></a>
+      <a href="https://qtumdynamics.com"><img src="docs/screenshots/home.png" alt="Quantum Dynamics home page"></a>
       <h3>Home page</h3>
       <p>A live ABX<sub>3</sub> lattice in plain canvas, a QAOA circuit animation (Anime.js), and an open-by-default
       design: anyone can look around, and sign-up is only asked for when you run something.</p>
