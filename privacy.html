@@ -191,6 +191,26 @@ footer { border-top: 1px solid var(--line); background: #070707; }
 .legal h1 .ic { color: var(--brand); display: flex; }
 .legal p { color: var(--text-secondary); font-size: 16px; line-height: 1.65; margin: 0 0 16px; }
 .legal .back { font-size: 14px; }
+.legal .updated { color: var(--text-muted); font-size: 13px; margin: -8px 0 22px; }
+.legal h2 { font-size: 20px; margin: 36px 0 10px; scroll-margin-top: 80px; text-transform: none; letter-spacing: 0;
+  color: var(--text-primary); display: block; }
+.legal h2::before { display: none; }
+.legal ul { color: var(--text-secondary); font-size: 16px; line-height: 1.65; padding-left: 20px; margin: 0 0 16px; }
+.legal li { margin-bottom: 6px; }
+.legal li b { color: var(--text-primary); }
+.legal .short { background: var(--surface-1); border: 1px solid var(--line); border-left: 3px solid var(--brand); padding: 16px 20px; margin-bottom: 22px; }
+.legal .short b { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--brand); }
+.legal .short p { margin: 6px 0 0; font-size: 15px; }
+.legal .toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13.5px; padding: 0 0 6px; }
+.legal .toc a { color: var(--text-secondary); text-decoration: none; border-bottom: 1px solid #333; }
+.legal .toc a:hover { color: var(--brand); border-color: var(--brand); }
+.legal .tbl { overflow-x: auto; margin: 0 0 16px; }
+.legal table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.legal th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted);
+  padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); font-weight: 700; }
+.legal td { color: var(--text-secondary); padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.5; }
+.legal td:first-child { color: var(--text-primary); }
+.legal code { font-size: 13px; color: var(--text-primary); background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
 </style>
 </head>
 <body>
@@ -211,11 +231,135 @@ footer { border-top: 1px solid var(--line); background: #070707; }
 <main>
   <div class="legal">
     <h1><span class="ic"><svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 4 5.5v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10v-6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></span>Privacy</h1>
-    <p>When you sign up we keep what you type (name, email and, if you give them, organisation and role), the time
-          you signed up, and one cookie that keeps you signed in. We use it to give you access and to contact you about
-          this project. If you use the contact form, we keep your message and details to reply to you.
-          All of it stays on our server: never sold, never shared. To see, correct or delete your details, email
-          <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>.</p>
+    <p class="updated">Last updated 14 November 2026</p>
+
+    <div class="short">
+      <b>In short</b>
+      <p>When you sign up we keep what you type (name, email and, if you give them, organisation and role), the time
+        you signed up, and one cookie that keeps you signed in. We use it to give you access and to contact you about
+        this project. If you use the contact form, we keep your message and details to reply to you.
+        All of it stays on our server: never sold, never shared. If you run a simulation while signed in, your name
+        is shown next to it in the shared run history. To see, correct or delete your details, email <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>.</p>
+    </div>
+
+    <nav class="toc" aria-label="On this page">
+      <a href="#who">Who we are</a><a href="#collect">What we collect</a><a href="#not">What we don't do</a>
+      <a href="#cookies">Cookies and browser storage</a><a href="#see">Who can see your information</a>
+      <a href="#where">Where it is stored</a><a href="#keep">How long we keep it</a><a href="#security">Security</a>
+      <a href="#rights">Your choices and rights</a><a href="#complaints">Questions and complaints</a>
+      <a href="#children">Children</a><a href="#changes">Changes to this page</a>
+    </nav>
+
+    <h2 id="who">Who we are</h2>
+    <p>Quantum Dynamics (qtumdynamics.com) is an open-source research project run by Cintelis in Australia. We are
+      responsible for the personal information collected through this site. You can reach us at <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>.</p>
+    <p>This page explains how we handle personal information. We aim to follow the Australian Privacy Principles in
+      the <i>Privacy Act 1988</i> (Cth).</p>
+
+    <h2 id="collect">What we collect and why</h2>
+    <p>You can browse the site, the rankings, the molecules and the saved simulations without telling us who you
+      are. We only collect personal information when you choose to give it to us.</p>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>What</th><th>When</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Name, email, and if you give them, organisation and role. Also the time you signed up.</td>
+          <td>When you sign up to run simulations, save runs or see molecule structures</td>
+          <td>To give you access, and to contact you about this project</td></tr>
+        <tr><td>Name, email, organisation (optional) and your message</td>
+          <td>When you use the Contact us form</td>
+          <td>To reply to you</td></tr>
+        <tr><td>Your name next to simulations you run</td>
+          <td>When you run a simulation while signed in</td>
+          <td>So researchers can see who ran what in the shared run history</td></tr>
+        <tr><td>Your IP address</td>
+          <td>Every visit</td>
+          <td>To stop abuse: we limit how many requests, sign-ups and messages come from one address. We keep it in
+            the server's memory only, not on disk, and drop it within 24 hours.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>We don't ask for sensitive information, such as health or financial details. Please don't put any in a
+      message.</p>
+
+    <h2 id="not">What we don't do</h2>
+    <ul>
+      <li>We don't sell, rent or trade your information.</li>
+      <li>We don't use analytics, advertising or tracking tools, and the pages load no third-party scripts.</li>
+      <li>We don't add you to marketing lists, and we don't make automated decisions about you.</li>
+    </ul>
+
+    <h2 id="cookies">Cookies and browser storage</h2>
+    <div class="tbl">
+    <table>
+      <thead><tr><th>Name</th><th>What it does</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td><code>qd_session</code></td><td>Keeps you signed in after you sign up. It holds a random ID and your
+          name, signed so it can't be forged.</td><td>About 13 months, or until you sign out</td></tr>
+        <tr><td><code>qd_visit</code></td><td>Lets the site's pages load their data, so scripts can't bulk-download
+          the data directly. It holds no personal information.</td><td>6 hours</td></tr>
+        <tr><td>Cloudflare cookies (for example <code>__cf_bm</code>)</td><td>Set by Cloudflare, which protects the site
+          from bots and attacks</td><td>Short-lived, set by Cloudflare</td></tr>
+        <tr><td>Browser storage (<code>qd-params-…</code>)</td><td>Remembers the settings you last used in the dynamics
+          dashboard. It stays in your browser and is never sent to us.</td><td>Until you clear your browser data</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>All of these are needed for the site to work, so there are no optional cookies to switch off. You can delete
+      them in your browser at any time. If you do, you'll be signed out.</p>
+
+    <h2 id="see">Who can see your information</h2>
+    <ul>
+      <li><b>Us.</b> Only the people who run this project can see sign-ups and messages, on an admin page protected
+        by a key.</li>
+      <li><b>Everyone, for run names.</b> Visitors can see your name next to simulations you ran while signed in. You
+        can delete your own runs.</li>
+      <li><b>Our service providers.</b> Oracle Cloud hosts the server. Cloudflare carries traffic to it and protects
+        it. They handle data only to provide those services.</li>
+      <li><b>Where the law requires it.</b> We would disclose information only if the law requires us to.</li>
+    </ul>
+
+    <h2 id="where">Where it is stored</h2>
+    <p>Sign-ups, messages and saved runs are stored on our server in Oracle Cloud's Sydney region, in Australia.
+      Cloudflare's network has servers around the world, so your connection to the site may pass through servers
+      outside Australia.</p>
+
+    <h2 id="keep">How long we keep it</h2>
+    <ul>
+      <li><b>Sign-up details and messages:</b> while the project runs, or until you ask us to delete them.</li>
+      <li><b>Saved runs:</b> until you or we delete them.</li>
+      <li><b>IP addresses:</b> in the server's memory for up to 24 hours, never written to disk.</li>
+      <li><b>Cookies:</b> for the times shown in the cookie table.</li>
+    </ul>
+
+    <h2 id="security">Security</h2>
+    <p>The site is served only over HTTPS. Sign-in cookies are signed and can't be read by scripts on the page. The
+      website is reachable only through Cloudflare, and only the project team can reach the stored records. No system
+      is perfectly secure. If a data breach is likely to cause you serious harm, we'll tell you and, where required,
+      the Office of the Australian Information Commissioner.</p>
+
+    <h2 id="rights">Your choices and rights</h2>
+    <ul>
+      <li><b>Access and correction.</b> Ask for a copy of what we hold about you, or for it to be corrected.</li>
+      <li><b>Deletion.</b> Ask us to delete your sign-up, your messages or your name on saved runs.</li>
+      <li><b>No more contact.</b> Ask us to stop contacting you about the project. You can still use the site.</li>
+      <li><b>Sign out.</b> Use "Sign out" in the site menu to remove the sign-in cookie from your browser.</li>
+    </ul>
+    <p>Email <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a> for any of these. We'll reply within 30 days. If you live where other privacy laws give you
+      more rights, such as the EU or UK GDPR, tell us and we'll honour them.</p>
+
+    <h2 id="complaints">Questions and complaints</h2>
+    <p>If you have a question or a complaint about how we handle your information, email <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>. We'll look into it
+      and reply within 30 days. If you're not satisfied with our reply, you can complain to the Office of the
+      Australian Information Commissioner at <a href="https://www.oaic.gov.au" target="_blank" rel="noopener">oaic.gov.au</a>.</p>
+
+    <h2 id="children">Children</h2>
+    <p>This site is for researchers and is not meant for children. Please don't sign up or send us a message if
+      you're under 16.</p>
+
+    <h2 id="changes">Changes to this page</h2>
+    <p>If we change how we handle personal information, we'll update this page and the date at the top.</p>
+
     <p class="back"><a href="/">← Back to Quantum Dynamics</a></p>
   </div>
 </main>
