@@ -105,6 +105,12 @@ def rate_ok(ip, limit, window=3600):
 # "visit" cookie with every page; /api/* answers visitors only with that cookie and the browser's same-origin
 # marker (Sec-Fetch-Site), so a script calling the API directly is refused. Everyone is also rate limited per
 # address: requests per 10 minutes and explorer rows per day (signed-up users get more).
+# Static files for browsers, search engines and link previews (served with a day's cache).
+STATIC = {"/og.png": "image/png", "/favicon.ico": "image/x-icon", "/favicon.svg": "image/svg+xml",
+          "/apple-touch-icon.png": "image/png", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
+          "/site.webmanifest": "application/manifest+json"}
+SITEMAP_PAGES = ["/", "/explorer", "/molecules", "/dashboard", "/chain"]
+
 VISIT_COOKIE = "qd_visit"
 VISIT_TTL = 6 * 3600
 API_RATE = {"visitor": 240, "member": 900}          # requests per 10 minutes
@@ -469,6 +475,48 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_static(self, path, ctype):
+        with open(path, "rb") as f:
+            body = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "public, max-age=86400")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_text(self, body, ctype):
+        body = body.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "public, max-age=3600")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_HEAD(self):
+        """Link-preview bots and uptime checks ask for headers only: answer like GET, without the body."""
+        if urlparse(self.path).path.startswith("/api/"):
+            self.send_response(405); self.send_header("Content-Length", "0"); self.end_headers()
+            return
+        real, sent = self.wfile, []
+
+        class HeadersOnly:
+            def write(_, b):
+                if not sent:          # the first write is the status line and headers
+                    sent.append(1)
+                    return real.write(b)
+                return len(b)
+
+            def flush(_):
+                return real.flush()
+
+        self.wfile = HeadersOnly()
+        try:
+            self.do_GET()
+        finally:
+            self.wfile = real
+
     def send_file(self, path, ctype):
         with open(path, "rb") as f:
             body = f.read()
@@ -499,12 +547,19 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/admin":
             self.send_file(os.path.join(HERE, "admin.html"), "text/html; charset=utf-8")
         elif u.path == "/robots.txt":
-            body = b"User-agent: *\nDisallow: /api/\nDisallow: /admin\nAllow: /\n"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            site = "https://" + (CANONICAL_HOST or self.headers.get("Host") or "localhost")
+            self.send_text(f"User-agent: *\nDisallow: /api/\nDisallow: /admin\nAllow: /\n\nSitemap: {site}/sitemap.xml\n",
+                           "text/plain; charset=utf-8")
+        elif u.path == "/sitemap.xml":
+            site = "https://" + (CANONICAL_HOST or self.headers.get("Host") or "localhost")
+            day = time.strftime("%Y-%m-%d", time.gmtime(max(os.path.getmtime(os.path.join(HERE, f))
+                                                              for f in ("landing.html", "explorer.html", "dashboard.html"))))
+            urls = "".join(f"<url><loc>{site}{p}</loc><lastmod>{day}</lastmod><priority>{'1.0' if p == '/' else '0.8'}</priority></url>"
+                           for p in SITEMAP_PAGES)
+            self.send_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                           + urls + "</urlset>\n", "application/xml; charset=utf-8")
+        elif u.path in STATIC:
+            self.send_static(os.path.join(HERE, "static", u.path.lstrip("/")), STATIC[u.path])
         elif u.path == "/api/session":
             s = self.session()
             self.send_json({"signed_in": bool(s), "name": s["n"] if s else None,

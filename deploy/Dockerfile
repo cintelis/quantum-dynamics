@@ -12,6 +12,7 @@ COPY --chown=root:root dashboard.py explorer_api.py dashboard.html explorer.html
      sim.py funnel.py transmon.py seed_runs.py ./
 # all of data/: what the pages read, plus the raw perovskite database, catalogue and PubChem caches they were built from
 COPY --chown=root:root data/ data/
+COPY --chown=root:root static/ static/
 
 # saved runs live in a volume; everything else is read-only
 RUN mkdir -p /app/output/runs && chown quantum:quantum /app/output/runs
