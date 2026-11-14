@@ -60,6 +60,9 @@ def handles():
 
 def main():
     hs = handles()
+    if not hs:
+        print("no products found (the shop may be rate-limiting this address); nothing saved, try again later")
+        return 1
     first = get(f"/products/{hs[0]}") if hs else ""
     m = re.search(r'og:price:currency"\s+content="([A-Z]{3})"', first) or re.search(r'"priceCurrency"\s*:\s*"([A-Z]{3})"', first)
     currency = m.group(1) if m else None
