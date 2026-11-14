@@ -177,7 +177,10 @@ textarea { min-height: 90px; resize: vertical; }
 .fold .ic { color: var(--brand); display: flex; }
 .fold b { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
 .fold .hint { color: var(--text-muted); font-size: 13px; }
-.fold-body { padding: 2px 18px 18px 52px; max-width: 760px; }
+.fold-body { padding: 2px 18px 18px 52px; display: grid; grid-template-columns: minmax(0, 660px) minmax(0, 1fr); gap: 32px; align-items: center; }
+.contact-anim { justify-self: center; width: 100%; max-width: 300px; }
+.contact-anim svg { width: 100%; height: auto; display: block; font-family: inherit; }
+@media (max-width: 900px) { .fold-body { grid-template-columns: 1fr; } .contact-anim { display: none; } }
 #contactForm { display: grid; gap: 12px; border: 0; background: none; padding: 0; margin: 0; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .send-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
@@ -325,6 +328,7 @@ footer { border-top: 1px solid var(--line); background: #070707; }
     <details class="fold" id="contact">
       <summary><span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="1.5"/><path d="m3 6 9 7 9-7"/></svg></span><b>Contact us</b><span class="hint">Questions, ideas or a lab partnership</span></summary>
       <div class="fold-body">
+        <div class="fold-main">
         <form id="contactForm" novalidate>
           <div class="row2">
             <label>Name<input name="name" autocomplete="name" maxlength="100" required></label>
@@ -340,6 +344,8 @@ footer { border-top: 1px solid var(--line); background: #070707; }
           <div class="msg" id="contactMsg" role="status"></div>
         </form>
         <p class="sent" id="contactSent" hidden>Thanks, your message is in. We'll reply by email.</p>
+        </div>
+        <div class="contact-anim" id="contactAnim" aria-hidden="true"></div>
       </div>
     </details>
   </section>
@@ -367,7 +373,6 @@ footer { border-top: 1px solid var(--line); background: #070707; }
       <h4>Project</h4>
       <a href="#how">How it works</a>
       <a href="#contact">Contact us</a>
-      <a href="mailto:hello@qtumdynamics.com">hello@qtumdynamics.com</a>
     </nav>
   </div>
   <div class="foot-base">
@@ -381,6 +386,7 @@ const n = new URLSearchParams(location.search).get("next");
 if (n && /^\/[\w\-./]*(#[\w\-=&.%+]*)?$/.test(n) && n !== "/") location.replace(n);
 </script>
 <script type="module" src="/circuit-anim.js?v=1"></script>
+<script type="module" src="/contact-anim.js?v=1"></script>
 <script>
 // Contact us: opens from #contact links; sends to /api/contact (kept on the server, read on the admin page)
 (() => {
