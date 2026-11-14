@@ -137,10 +137,12 @@ def public(p):
 # The circuit: start in an even mix of every plan, then per layer l a cost step exp(-i gamma_l C) (rz on each qubit,
 # cx-rz-cx on each pair) and a mixer step exp(-i beta_l X) on every qubit. C is the plan cost scaled to unit spread.
 #
-# Tuning the angles takes hundreds of evaluations. CUDA-Q 0.16's Python layer spends ~0.1-4 s preparing each call
-# on a CPU, so the angles are tuned on an exact NumPy model of the same circuit (diagonal phases plus one-qubit
-# rotations, so the model is a few lines), and the tuned circuit is then run once on CUDA-Q for the samples.
-# The result reports the model's average plan cost next to CUDA-Q's sampled one, so any mismatch would show.
+# Every tuning step runs the circuit on CUDA-Q (its state vector gives the exact average plan cost). Only the
+# starting angles come from a quick scan of an exact NumPy model of the same circuit (diagonal phases plus one-qubit
+# rotations), because the scan is 720 points. Each layer stage has a time budget, so the biggest settings (12 stops,
+# 3-4 layers: ~0.1 s per CUDA-Q call on the server's CPU) take fewer tuning steps rather than keeping people waiting.
+# engine="numpy" tunes on the model instead (useful where CUDA-Q calls are slow, e.g. under WSL).
+TUNE_BUDGET = 16.0          # seconds of CUDA-Q tuning per run, shared between the layer stages
 
 def _np_state(n, layers, theta, diag):
     psi = np.full(2 ** n, 2 ** (-n / 2), dtype=complex)
@@ -178,16 +180,15 @@ def _kernel():
 _KERNEL = None
 
 
-def tune(n, layers, diag, costs, on_step=None, maxiter=150):
-    """Layer by layer: a grid search for one layer, then each extra layer starts from the last one's angles
-    stretched to the new depth, polished with COBYLA. Streams every evaluation as {i, layer, expected, best}."""
+def tune(n, layers, diag, costs, state, on_step=None, maxiter=150, budget=TUNE_BUDGET):
+    """Layer by layer: a grid scan (NumPy model) for one layer, then COBYLA on state(L, theta); each extra layer
+    starts from the last one's angles stretched to the new depth. Streams every step as {i, layer, expected, best}."""
     from scipy.optimize import minimize
-    probs = lambda L, th: np.abs(_np_state(n, L, th, diag)) ** 2
     history, steps, t0 = [], [], time.perf_counter()
 
     def f_for(L):
         def f(th):
-            e = float(probs(L, th) @ costs)
+            e = float(np.abs(state(L, list(map(float, th)))) ** 2 @ costs)
             history.append(e)
             if on_step:
                 on_step({"i": len(history), "layer": L, "expected": round(e, 4), "best": round(min(history), 4),
@@ -196,31 +197,49 @@ def tune(n, layers, diag, costs, on_step=None, maxiter=150):
         return f
 
     G, B = np.linspace(0.02, 1.2, 30), np.linspace(0.02, 1.55, 24)
-    e0, g0, b0 = min((float(probs(1, [g, b]) @ costs), g, b) for g in G for b in B)
+    model = lambda th: np.abs(_np_state(n, 1, th, diag)) ** 2
+    e0, g0, b0 = min((float(model([g, b]) @ costs), g, b) for g in G for b in B)
     theta = [g0, b0]
     for L in range(1, layers + 1):
         if L > 1:
             xs, xp = np.linspace(0, 1, L), np.linspace(0, 1, L - 1)
             theta = list(np.interp(xs, xp, theta[:L - 1])) + list(np.interp(xs, xp, theta[L - 1:]))
+        tc = time.perf_counter()
+        state(L, theta)                                  # time one call (also warms up the kernel)
+        per_call = max(time.perf_counter() - tc, 1e-4)
+        stage = budget * L / (layers * (layers + 1) / 2)  # deeper stages cost more per call: give them more time
+        it = int(min(maxiter, max(30, stage / per_call)))
         before = len(history)
-        r = minimize(f_for(L), theta, method="COBYLA", options={"maxiter": maxiter, "rhobeg": 0.1})
+        r = minimize(f_for(L), theta, method="COBYLA", options={"maxiter": it, "rhobeg": 0.1})
         theta = list(map(float, r.x))
         steps.append(len(history) - before)
     return theta, history, {"grid_points": len(G) * len(B), "grid_best": round(e0, 4), "layer_steps": steps}
 
 
-def run(stops, layers, seed, on_step=None, shots=2000, sample=True, before_sample=None):
-    """Tune the angles, run the tuned circuit on CUDA-Q, and compare its samples with the exact best plan."""
+def run(stops, layers, seed, on_step=None, shots=2000, before_sample=None, engine="cudaq"):
+    """Tune the angles on CUDA-Q, sample the tuned circuit on CUDA-Q, and compare with the exact best plan."""
     global _KERNEL
+    import cudaq
+    if _KERNEL is None:
+        _KERNEL = _kernel()
     p = problem(stops, seed)
     const, h, J = p["_ising"]
     costs = p["_costs"]
     n = stops
     sd = float(costs.std())
     diag = (costs - float(costs.mean())) / sd      # the circuit's cost operator: plan cost scaled to unit spread
+    hs = [v / sd for v in h]                       # the same scaling in the circuit (the constant is a global phase)
+    ii = [i for i, _ in J]
+    jj = [j for _, j in J]
+    js = [J[e] / sd for e in J]
+    if engine == "cudaq":
+        state = lambda L, th: np.array(cudaq.get_state(_KERNEL, n, L, th, hs, ii, jj, js))
+    else:
+        state = lambda L, th: _np_state(n, L, th, diag)
     t0 = time.perf_counter()
-    theta, history, grid = tune(n, layers, diag, costs, on_step)
+    theta, history, grid = tune(n, layers, diag, costs, state, on_step)
     t_tune = time.perf_counter() - t0
+    final_p = np.abs(state(layers, theta)) ** 2
     model_p = np.abs(_np_state(n, layers, theta, diag)) ** 2
     order = np.argsort(costs, kind="stable")
     rank = np.empty(len(costs), dtype=int)
@@ -231,22 +250,14 @@ def run(stops, layers, seed, on_step=None, shots=2000, sample=True, before_sampl
     out.update({
         "layers": layers, "qubits": n, "theta": [round(t, 4) for t in theta], "evaluations": len(history),
         "history": [round(v, 4) for v in history], "grid": grid, "layer_steps": grid.pop("layer_steps"), "tune_seconds": round(t_tune, 3),
-        "expected_model": round(float(model_p @ costs), 4), "p_best_model": round(float(model_p[best_mask].sum()), 5),
+        "tuned_on": "CUDA-Q" if engine == "cudaq" else "NumPy model",
+        "expected_state": round(float(final_p @ costs), 4), "p_best_state": round(float(final_p[best_mask].sum()), 5),
+        "model_check": round(float(np.abs(final_p - model_p).sum() / 2), 6),   # CUDA-Q state vs NumPy model
         "p_random": round(float(best_mask.mean()), 6),
         "gates": n + layers * (2 * n + 3 * len(J)),
     })
-    if not sample:
-        return out
-
     if before_sample:
         before_sample()
-    import cudaq
-    if _KERNEL is None:
-        _KERNEL = _kernel()
-    hs = [v / sd for v in h]                       # same scaling as diag (the constant only adds a global phase)
-    ii = [i for i, _ in J]
-    jj = [j for _, j in J]
-    js = [J[e] / sd for e in J]
     t1 = time.perf_counter()
     counts = cudaq.sample(_KERNEL, n, layers, theta, hs, ii, jj, js, shots_count=shots)
     t_q = time.perf_counter() - t1
@@ -276,16 +287,18 @@ if __name__ == "__main__":
     ap.add_argument("--layers", type=int, default=2)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--save", action="store_true", help="write the run to data/routing_example.json for the page")
+    ap.add_argument("--engine", choices=["cudaq", "numpy"], default="cudaq", help="what runs the tuning steps")
     a = ap.parse_args()
-    r = run(a.stops, a.layers, a.seed)
+    r = run(a.stops, a.layers, a.seed, engine=a.engine)
     if a.save:
         import json, os
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "routing_example.json"), "w") as f:
             json.dump(dict(r, example=True), f, separators=(",", ":"))
     print(f"{r['qubits']} qubits, {r['layers']} layers, {r['gates']} gates: tuned in {r['tune_seconds']} s "
-          f"({r['evaluations']} evaluations), sampled on {r['target']} in {r['quantum_seconds']} s")
+          f"({r['evaluations']} steps on {r['tuned_on']}), sampled on {r['target']} in {r['quantum_seconds']} s; "
+          f"CUDA-Q state vs NumPy model differ by {r['model_check']}")
     print(f"exact best {r['best']['bits']} {r['best']['cost']} km | best sample {r['found']['bits']} {r['found']['cost']} km "
           f"(rank {r['found']['rank']} of {r['plans']})")
-    print(f"average plan: random {r['mean_cost']} km, QAOA model {r['expected_model']}, CUDA-Q samples {r['expected_samples']}")
-    print(f"P(best): random {r['p_random']:.4f}, model {r['p_best_model']:.4f}, CUDA-Q {r['p_best']:.4f}; "
+    print(f"average plan: random {r['mean_cost']} km, tuned circuit {r['expected_state']}, CUDA-Q samples {r['expected_samples']}")
+    print(f"P(best): random {r['p_random']:.4f}, tuned circuit {r['p_best_state']:.4f}, samples {r['p_best']:.4f}; "
           f"{r['distinct']} distinct plans in {r['shots']} samples")

@@ -180,10 +180,10 @@ code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: v
         <div><b>1 · Plans as qubits</b><p>One qubit per stop. 8 stops give 2<sup>8</sup> = 256 possible plans, 12 stops give 4,096. A real fleet has far more.</p></div>
         <div><b>2 · A cost formula</b><p>Distance from each stop to its van's depot, plus distance between stops that share a van, plus a penalty when one van gets more stops than the other.</p></div>
         <div><b>3 · QAOA</b><p>Start with every plan equally likely. Each layer adds phases from the cost formula, then mixes plans together. More layers can do better.</p></div>
-        <div><b>4 · Tune, then measure</b><p>A classical optimiser picks the layer angles. The tuned circuit then runs on CUDA-Q, and each measurement gives a plan.</p></div>
+        <div><b>4 · Tune, then measure</b><p>A classical optimiser adjusts the layer angles, running the circuit on CUDA-Q at every step. The tuned circuit is then measured, and each measurement gives a plan.</p></div>
       </div>
-      <p class="foot">The angles are tuned on an exact NumPy model of the same circuit, because each CUDA-Q call from Python takes 0.1 to 4 seconds on this
-        CPU server and tuning needs hundreds of them. The tuned circuit then runs on CUDA-Q's simulator, and the page shows both averages so you can check they agree.
+      <p class="foot">Every tuning step runs the circuit on CUDA-Q's state-vector simulator, on this site's CPU server. The starting angles come from a quick
+        scan of 720 settings on an exact NumPy copy of the circuit. Tuning has a time budget, so 12 stops with 3 or 4 layers takes fewer steps.
         Each van's driving order is worked out classically once the stops are split. At these sizes a laptop checks every plan instantly, and classical solvers
         still beat QAOA on real routing problems. This demo shows how the method works, not a speed-up.</p>
     </div>
@@ -313,7 +313,7 @@ function tiles() {
     t.push(["Average plan", km(R.expected_samples), `random guessing averages ${km(P.mean_cost)}`]);
     const x = R.p_best / R.p_random;
     t.push(["Best plan came up", `${(R.p_best * 100).toFixed(1)}%`, x >= 1.05 ? `of samples · ${x.toFixed(1)}× random guessing` : "of samples · about as often as random"]);
-    t.push(["Time", `${(R.tune_seconds + R.quantum_seconds).toFixed(1)} s`, `${R.evaluations} tuning steps · CUDA-Q ${R.target}`]);
+    t.push(["Time", `${(R.tune_seconds + R.quantum_seconds).toFixed(1)} s`, `${R.evaluations} tuning steps on ${R.tuned_on || "CUDA-Q"} (${R.target})`]);
   } else {
     t.push(["Exact best plan", km(P.best.cost), "found by checking every plan"]);
     t.push(["Random plan", km(P.mean_cost), "average over all plans"]);
@@ -408,7 +408,7 @@ function start() {
     const same = R.found.cost <= P.best.cost + 1e-6;
     $("status").replaceChildren(document.createTextNode(`Done in ${(R.tune_seconds + R.quantum_seconds).toFixed(1)} s. `),
       H("b", {}, same ? "The circuit found the exact best plan." : `Best sampled plan is rank ${R.found.rank} of ${P.plans.toLocaleString()}.`),
-      document.createTextNode(` CUDA-Q's samples average ${km(R.expected_samples)}; the tuning model predicted ${km(R.expected_model)}.`));
+      document.createTextNode(` CUDA-Q's 2,000 samples average ${km(R.expected_samples)}, close to the tuned circuit's exact average of ${km(R.expected_state)}.`));
   });
   es.addEventListener("error", ev => {
     let msg = "The connection dropped.";
