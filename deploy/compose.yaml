@@ -37,6 +37,28 @@ services:
       QUANTUM_REDIRECT_HOSTS: ${QUANTUM_REDIRECT_HOSTS:-www.qtumdynamics.com,quantum.cintelis.com.au}
       QUANTUM_ADMINS: ${QUANTUM_ADMINS:-}     # these emails may delete any run, including the examples
 
+  # Emails each Contact Us message to hello@qtumdynamics.com through the 365soft email worker (Microsoft 365).
+  # It reads the messages file read-only, so the dashboard keeps no route out; only this service can reach out.
+  mailer:
+    image: python:3.13-alpine
+    restart: unless-stopped
+    command: python -u /app/mailer.py
+    networks: [outside]
+    volumes:
+      - ../mailer.py:/app/mailer.py:ro
+      - runs:/runs:ro                         # the dashboard's runs volume, where .messages.jsonl lives
+      - mailer:/state                         # which messages have been sent
+    environment:
+      CF_ACCESS_CLIENT_ID: ${CF_ACCESS_CLIENT_ID:-}           # Access service token "qtumdynamics-contact-form"
+      CF_ACCESS_CLIENT_SECRET: ${CF_ACCESS_CLIENT_SECRET:-}
+      MAIL_TO: ${QUANTUM_MAIL_TO:-hello@qtumdynamics.com}
+      MAIL_FROM: ${QUANTUM_MAIL_FROM:-hello@qtumdynamics.com}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    cpus: 0.25
+    mem_limit: 64m
+
   cloudflared:
     image: cloudflare/cloudflared:2026.10.7
     restart: unless-stopped
@@ -60,3 +82,4 @@ networks:
 
 volumes:
   runs: {}
+  mailer: {}
