@@ -61,6 +61,9 @@ details.primer { margin-bottom: 16px; }
 details.primer summary { cursor: pointer; font-weight: 700; color: var(--text-secondary); font-size: 13px; }
 .primer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; color: var(--text-secondary); font-size: 13px; }
 .primer-grid b { color: var(--text-primary); }
+.primer-why { margin: 12px 0 4px; color: var(--text-secondary); font-size: 13px; line-height: 1.6; max-width: 900px; }
+.primer-why b { color: var(--text-primary); }
+.primer-why a { color: var(--brand); }
 .pv { margin: 12px 0 14px; border: 1px solid var(--line); background: #070707; }
 .pv-canvas canvas { display: block; }
 .pv-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 8px 10px; border-top: 1px solid var(--line); }
@@ -185,6 +188,14 @@ ul.buy .chip { font-size: 10.5px; }
 
     <details class="card primer">
       <summary>New to perovskites? How the pieces fit (30-second read)</summary>
+      <p class="primer-why"><b>Why they matter.</b> Perovskites are a family of crystals that turn sunlight into electricity.
+        The first perovskite solar cell, in 2009, converted
+        <a href="https://doi.org/10.1021/ja809598r" target="_blank" rel="noopener">3.8% of sunlight</a> into electricity.
+        By 2025 a small lab cell reached
+        <a href="https://www.acap.org.au/post/world-leading-27-perovskite-efficiency-record-achieved-by-unsw-and-soochow-university-with-acap-su" target="_blank" rel="noopener">27%</a>,
+        close to the best silicon cells. They can be made from salts dissolved in a liquid and coated on as a thin film at low
+        temperature. The catch: moisture and heat break them down much faster than silicon, so the search is for recipes that
+        are both efficient and durable.</p>
       <div class="pv">
         <div class="pv-canvas" id="pvAnim" role="img" aria-label="Animated 3D model of a perovskite crystal"></div>
         <div class="pv-bar">
